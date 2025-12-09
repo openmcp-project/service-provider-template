@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"errors"
+	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -54,20 +55,30 @@ type ProviderConfig interface {
 
 // SPReconciler implements a generic reconcile loop to separate platform
 // and service provider developer space.
-type SPReconciler[T APIObject, PC ProviderConfig] struct {
+type SPReconciler[T interface{ APIObject }, PC ProviderConfig] struct {
 	PlatformCluster         *clusters.Cluster
 	OnboardingCluster       *clusters.Cluster
 	ClusterAccessReconciler clusteraccess.Reconciler
 	DomainServiceReconciler DomainServiceReconciler[T, PC]
-	EmptyAPIObj             func() T
 	ProviderConfig          atomic.Pointer[PC]
+}
+
+// helper to create an empty APIObject
+// background is the pointer/value receiver mismatch of the generated api types
+// that don't satisfy client.Object
+func (r *SPReconciler[T, PC]) emptyAPIObject() T {
+	var t T
+	// create elem based on type
+	val := reflect.New(reflect.TypeOf(t).Elem())
+	// cast empty elem back
+	return val.Interface().(T)
 }
 
 // Reconcile orchestrates platform and DomainServiceReconciler logic to reconcile APIObjects
 func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := logf.FromContext(ctx)
 	// common reconciler logic including get obj, providerconfig, mcp/workload access
-	obj := r.EmptyAPIObj()
+	obj := r.emptyAPIObject()
 	if err := r.OnboardingCluster.Client().Get(ctx, req.NamespacedName, obj); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}

@@ -39,15 +39,15 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// FooServiceReconciler reconciles a FooService object
-type FooServiceReconciler struct {
+// {{.Kind}}Reconciler reconciles a {{.Kind}} object
+type {{.Kind}}Reconciler struct {
 	OnboardingCluster       *clusters.Cluster
 	PlatformCluster         *clusters.Cluster
 	ClusterAccessReconciler clusteraccess.Reconciler
 }
 
 // CreateOrUpdate is called on every add or update event
-func (r *FooServiceReconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.FooService, providerConfig *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
+func (r *{{.Kind}}Reconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.{{.Kind}}, providerConfig *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
 	spruntime.StatusProgressing(svcobj, "Reconciling", "Reconcile in progress")
 	l := logf.FromContext(ctx)
 	managedObj := fooCRD()
@@ -79,7 +79,7 @@ func (r *FooServiceReconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1
 }
 
 // Delete is called on every delete event
-func (r *FooServiceReconciler) Delete(ctx context.Context, obj *apiv1alpha1.FooService, providerConfig *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
+func (r *{{.Kind}}Reconciler) Delete(ctx context.Context, obj *apiv1alpha1.{{.Kind}}, providerConfig *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
 	l := logf.FromContext(ctx)
 	// remove managed objs
 	spruntime.StatusTerminating(obj)
@@ -136,15 +136,18 @@ func fooCRD() *apiextensionsv1.CustomResourceDefinition {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *FooServiceReconciler) SetupWithManager(mgr ctrl.Manager, providerConfigUpdates chan event.GenericEvent) error {
-	spReconciler := spruntime.SPReconciler[*apiv1alpha1.FooService, *apiv1alpha1.ProviderConfig]{
+func (r *{{.Kind}}Reconciler) SetupWithManager(mgr ctrl.Manager, providerConfigUpdates chan event.GenericEvent) error {
+	spReconciler := spruntime.SPReconciler[*apiv1alpha1.{{.Kind}}, *apiv1alpha1.ProviderConfig]{
 		OnboardingCluster:       r.OnboardingCluster,
 		PlatformCluster:         r.PlatformCluster,
 		ClusterAccessReconciler: r.ClusterAccessReconciler,
 		DomainServiceReconciler: r,
+		EmptyAPIObj: func() *apiv1alpha1.{{.Kind}} {
+			return &apiv1alpha1.{{.Kind}}{}
+		},
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&apiv1alpha1.FooService{}).
+		For(&apiv1alpha1.{{.Kind}}{}).
 		// sets up reconciles whenever provider config controller sends update events
 		WatchesRawSource(
 			source.Channel(
@@ -159,7 +162,7 @@ func (r *FooServiceReconciler) SetupWithManager(mgr ctrl.Manager, providerConfig
 							spReconciler.ProviderConfig.Store(nil)
 						}
 						// reconcile all existing objects
-						var list apiv1alpha1.FooServiceList
+						var list apiv1alpha1.{{.Kind}}List
 						if err := r.OnboardingCluster.Client().List(ctx, &list); err != nil {
 							return nil
 						}
@@ -173,6 +176,6 @@ func (r *FooServiceReconciler) SetupWithManager(mgr ctrl.Manager, providerConfig
 					},
 				)),
 		).
-		Named("fooservice").
+		Named("{{.Kind}}").
 		Complete(&spReconciler)
 }
