@@ -99,8 +99,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("rename imports failed: %v", err)
 	}
-	// clean up repo
-	// remove /cmd/template
+	// clean up repo (remove /cmd/template)
+	err = os.RemoveAll("cmd/template")
+	if err != nil {
+		log.Fatalf("Error removing template directory: %v", err)
+		return
+	}
 	fmt.Printf("Generated service-provider for %s/%s' in %s\n", data.Group, data.Kind, *module)
 }
 
