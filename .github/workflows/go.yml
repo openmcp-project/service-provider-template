@@ -17,6 +17,16 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Generate template
+        run: |
+          go run ./cmd/template -v
+          make generate
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.6.2
+
       - name: Running Test e2e
         run: |
           make docker-build
