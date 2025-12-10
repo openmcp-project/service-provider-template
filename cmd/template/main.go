@@ -46,6 +46,7 @@ func main() {
 	// directories
 	apiDir := filepath.Join("api", "v1alpha1")
 	crdDir := filepath.Join("api", "crds", "manifests")
+	cmdDir := "cmd"
 	controllerDir := filepath.Join("internal", "controller")
 	e2eDir := filepath.Join("test", "e2e")
 	// files
@@ -53,6 +54,7 @@ func main() {
 	configcrdFile := filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_providerconfigs.yaml", *group))
 	typesFile := filepath.Join(apiDir, fmt.Sprintf("%s_types.go", data.KindLower))
 	groupVersionFile := filepath.Join(apiDir, "groupversion_info.go")
+	mainFile := filepath.Join(cmdDir, "main.go")
 	controllerFile := filepath.Join(controllerDir, fmt.Sprintf("%s_controller.go", data.KindLower))
 	testFile := filepath.Join(e2eDir, "serviceprovider_test.go")
 	testOnboardingFile := filepath.Join(e2eDir, "onboarding", fmt.Sprintf("%s.yaml", data.KindLower))
@@ -62,6 +64,8 @@ func main() {
 	execTemplate("api_crd_providerconfig.yaml.tmpl", configcrdFile, data)
 	execTemplate("api_types.go.tmpl", typesFile, data)
 	execTemplate("api_groupversion_info.go.tmpl", groupVersionFile, data)
+	// cmd
+	execTemplate("main.go.tmpl", mainFile, data)
 	// controller
 	execTemplate("controller.go.tmpl", controllerFile, data)
 	// e2e tests
