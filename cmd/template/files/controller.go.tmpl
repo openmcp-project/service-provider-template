@@ -33,7 +33,7 @@ import (
 
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess"
-	api{{.Version}} "github.com/openmcp-project/service-provider-template/api/{{.Version}}"
+	apiv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
 	spruntime "github.com/openmcp-project/service-provider-template/pkg/runtime"
 	apiextensionclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -47,7 +47,7 @@ type {{.Kind}}Reconciler struct {
 }
 
 // CreateOrUpdate is called on every add or update event
-func (r *{{.Kind}}Reconciler) CreateOrUpdate(ctx context.Context, svcobj *api{{.Version}}.{{.Kind}}, providerConfig *api{{.Version}}.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
+func (r *{{.Kind}}Reconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.{{.Kind}}, providerConfig *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
 {{- if .WithExample }}
 	spruntime.StatusProgressing(svcobj, "Reconciling", "Reconcile in progress")
 	l := logf.FromContext(ctx)
@@ -83,7 +83,7 @@ func (r *{{.Kind}}Reconciler) CreateOrUpdate(ctx context.Context, svcobj *api{{.
 }
 
 // Delete is called on every delete event
-func (r *{{.Kind}}Reconciler) Delete(ctx context.Context, obj *api{{.Version}}.{{.Kind}}, providerConfig *api{{.Version}}.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
+func (r *{{.Kind}}Reconciler) Delete(ctx context.Context, obj *apiv1alpha1.{{.Kind}}, providerConfig *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
 {{- if .WithExample }}
 	l := logf.FromContext(ctx)
 	// remove managed objs
@@ -115,7 +115,7 @@ func fooCRD() *apiextensionsv1.CustomResourceDefinition {
 			Group: "example.domain",
 			Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
 				{
-					Name:    "{{.Version}}",
+					Name:    "v1alpha1",
 					Served:  true,
 					Storage: true,
 					Schema: &apiextensionsv1.CustomResourceValidation{
@@ -147,14 +147,14 @@ func fooCRD() *apiextensionsv1.CustomResourceDefinition {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *{{.Kind}}Reconciler) SetupWithManager(mgr ctrl.Manager, providerConfigUpdates chan event.GenericEvent) error {
-	spReconciler := spruntime.SPReconciler[*api{{.Version}}.{{.Kind}}, *api{{.Version}}.ProviderConfig]{
+	spReconciler := spruntime.SPReconciler[*apiv1alpha1.{{.Kind}}, *apiv1alpha1.ProviderConfig]{
 		OnboardingCluster:       r.OnboardingCluster,
 		PlatformCluster:         r.PlatformCluster,
 		ClusterAccessReconciler: r.ClusterAccessReconciler,
 		DomainServiceReconciler: r,
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&api{{.Version}}.{{.Kind}}{}).
+		For(&apiv1alpha1.{{.Kind}}{}).
 		// sets up reconciles whenever provider config controller sends update events
 		WatchesRawSource(
 			source.Channel(
@@ -163,13 +163,13 @@ func (r *{{.Kind}}Reconciler) SetupWithManager(mgr ctrl.Manager, providerConfigU
 					func(ctx context.Context, obj client.Object) []reconcile.Request {
 						// update cached provider config
 						if obj != nil {
-							copy := obj.(*api{{.Version}}.ProviderConfig).DeepCopy()
+							copy := obj.(*apiv1alpha1.ProviderConfig).DeepCopy()
 							spReconciler.ProviderConfig.Store(&copy)
 						} else {
 							spReconciler.ProviderConfig.Store(nil)
 						}
 						// reconcile all existing objects
-						var list api{{.Version}}.{{.Kind}}List
+						var list apiv1alpha1.{{.Kind}}List
 						if err := r.OnboardingCluster.Client().List(ctx, &list); err != nil {
 							return nil
 						}

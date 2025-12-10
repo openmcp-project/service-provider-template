@@ -30,14 +30,12 @@ type TemplateData struct {
 
 func main() {
 	group := flag.String("group", "foo", "GVK group prefix (will always be suffixed with services.openmcp.cloud)")
-	version := flag.String("version", "v1alpha1", "GVK version")
 	kind := flag.String("kind", "FooService", "GVK kind")
 	withExample := flag.Bool("v", false, "Generate with sample code")
 	module := flag.String("module", "github.com/openmcp-project/service-provider-template", "Go module")
 	flag.Parse()
 	data := TemplateData{
 		Group:       *group,
-		Version:     *version,
 		Kind:        *kind,
 		KindLower:   strings.ToLower(*kind),
 		Module:      *module,

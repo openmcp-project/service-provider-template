@@ -49,7 +49,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	{{.KindLower}}s{{.Version}} "github.com/openmcp-project/service-provider-template/api/v1alpha1"
+	{{.KindLower}}sv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
 	"github.com/openmcp-project/service-provider-template/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
@@ -71,14 +71,14 @@ func init() {
 func initPlatformScheme() {
 	utilruntime.Must(clientgoscheme.AddToScheme(platformScheme))
 	utilruntime.Must(apiextensionv1.AddToScheme(platformScheme))
-	utilruntime.Must({{.KindLower}}s{{.Version}}.AddToScheme(platformScheme))
+	utilruntime.Must({{.KindLower}}sv1alpha1.AddToScheme(platformScheme))
 	utilruntime.Must(clustersv1alpha1.AddToScheme(platformScheme))
 }
 
 func initOnboardingScheme() {
 	utilruntime.Must(clientgoscheme.AddToScheme(onboardingScheme))
 	utilruntime.Must(apiextensionv1.AddToScheme(onboardingScheme))
-	utilruntime.Must({{.KindLower}}s{{.Version}}.AddToScheme(onboardingScheme))
+	utilruntime.Must({{.KindLower}}sv1alpha1.AddToScheme(onboardingScheme))
 }
 
 func initMcpScheme() {
