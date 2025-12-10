@@ -10,3 +10,7 @@ tasks:
     cmds:
       - go run ./cmd/template {{.CLI_ARGS}}
       - make generate
+  test:
+    desc: Run e2e test
+    cmds:
+      - go test -v ./test/e2e/... -count=1
