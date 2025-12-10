@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package {{.Version}}
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,7 +30,7 @@ type {{.Kind}}Spec struct {
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
 
-	// foo is an example field of {{.Kind}}. Edit {{.Kind}}_types.go to remove/update
+	// foo is an example field of {{.Kind}}. Edit {{.KindLower}}_types.go to remove/update
 	// +optional
 	Foo *string `json:"foo,omitempty"`
 }
@@ -67,7 +67,7 @@ type {{.Kind}}Status struct {
 // +kubebuilder:printcolumn:JSONPath=`.status.phase`,name="Phase",type=string
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:metadata:labels="openmcp.cloud/cluster=onboarding"
-// {{.Kind}} is the Schema for the {{.Kind}}s API
+// {{.Kind}} is the Schema for the {{.KindLower}}s API
 type {{.Kind}} struct {
 	metav1.TypeMeta `json:",inline"`
 

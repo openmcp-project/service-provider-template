@@ -18,7 +18,7 @@ import (
 )
 
 func TestServiceProvider(t *testing.T) {
-	var fooServices unstructured.UnstructuredList
+	var onboardingList unstructured.UnstructuredList
 	basicProviderTest := features.New("provider test").
 		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
 			if _, err := resources.CreateObjectsFromDir(ctx, c, "platform"); err != nil {
@@ -44,7 +44,7 @@ func TestServiceProvider(t *testing.T) {
 						t.Error(err)
 					}
 				}
-				objList.DeepCopyInto(&fooServices)
+				objList.DeepCopyInto(&onboardingList)
 				return ctx
 			},
 		).
@@ -55,9 +55,9 @@ func TestServiceProvider(t *testing.T) {
 				t.Error(err)
 				return ctx
 			}
-			for _, obj := range fooServices.Items {
+			for _, obj := range onboardingList.Items {
 				if err := resources.DeleteObject(ctx, onboardingConfig, &obj, wait.WithTimeout(time.Minute)); err != nil {
-					t.Errorf("failed to delete fooservice onboarding object: %v", err)
+					t.Errorf("failed to delete onboarding object: %v", err)
 				}
 			}
 			return ctx

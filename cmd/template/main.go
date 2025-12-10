@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"golang.org/x/tools/imports"
 )
 
 // exec from project root
@@ -21,7 +23,7 @@ type TemplateData struct {
 	Group       string
 	Version     string
 	Kind        string
-	Package     string
+	KindLower   string
 	Module      string
 	WithExample bool
 }
@@ -30,45 +32,51 @@ func main() {
 	group := flag.String("group", "foo", "GVK group prefix (will always be suffixed with services.openmcp.cloud)")
 	version := flag.String("version", "v1alpha1", "GVK version")
 	kind := flag.String("kind", "FooService", "GVK kind")
-	includeSample := flag.Bool("sample", false, "Generate with sample implementation")
+	withExample := flag.Bool("v", false, "Generate with sample code")
 	module := flag.String("module", "github.com/openmcp-project/service-provider-template", "Go module")
 	flag.Parse()
 	data := TemplateData{
 		Group:       *group,
 		Version:     *version,
 		Kind:        *kind,
-		Package:     strings.ToLower(*group),
+		KindLower:   strings.ToLower(*kind),
 		Module:      *module,
-		WithExample: *includeSample,
+		WithExample: *withExample,
 	}
+	// directories
 	apiDir := filepath.Join("api", "v1alpha1")
+	crdDir := filepath.Join("api", "crds", "manifests")
 	controllerDir := filepath.Join("internal", "controller")
 	e2eDir := filepath.Join("test", "e2e")
+	// files
+	providercrdFile := filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_%ss.yaml", *group, data.KindLower))
+	configcrdFile := filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_providerconfigs.yaml", *group))
+	typesFile := filepath.Join(apiDir, fmt.Sprintf("%s_types.go", data.KindLower))
+	groupVersionFile := filepath.Join(apiDir, "groupversion_info.go")
+	controllerFile := filepath.Join(controllerDir, fmt.Sprintf("%s_controller.go", data.KindLower))
+	testFile := filepath.Join(e2eDir, "serviceprovider_test.go")
+	testOnboardingFile := filepath.Join(e2eDir, "onboarding", fmt.Sprintf("%s.yaml", data.KindLower))
+	testPlatformFile := filepath.Join(e2eDir, "platform", "providerconfig.yaml")
 	// api
-	execTemplate("types.go.tmpl",
-		filepath.Join(apiDir, strings.ToLower(fmt.Sprintf("%s_types.go", *kind))),
-		data)
-	execTemplate("groupversion_info.go.tmpl",
-		filepath.Join(apiDir, "groupversion_info.go"),
-		data)
+	execTemplate("api_crd_serviceproviderapi.yaml.tmpl", providercrdFile, data)
+	execTemplate("api_crd_providerconfig.yaml.tmpl", configcrdFile, data)
+	execTemplate("api_types.go.tmpl", typesFile, data)
+	execTemplate("api_groupversion_info.go.tmpl", groupVersionFile, data)
 	// controller
-	execTemplate("controller.go.tmpl",
-		filepath.Join(controllerDir, strings.ToLower(fmt.Sprintf("%s_controller.go", *kind))),
-		data)
+	execTemplate("controller.go.tmpl", controllerFile, data)
 	// e2e tests
-	execTemplate("test.go.tmpl",
-		filepath.Join(e2eDir, "serviceprovider_test.go"),
-		data)
-	// call go mod edit followed by gopls to rename module
+	execTemplate("test.go.tmpl", testFile, data)
+	execTemplate("testdata_providerconfig.yaml.tmpl", testPlatformFile, data)
+	execTemplate("testdata_service.yaml.tmpl", testOnboardingFile, data)
+	// rename module
 	if err := exec.Command("go", "mod", "edit", "-module", *module).Run(); err != nil {
 		log.Fatalf("go mod edit failed: %v", err)
 	}
-	// fix import statements
+	// replace module in imports and remove redundant imports
 	rootDir, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("could not determine current working directory: %v", err)
 	}
-	log.Println(rootDir)
 	err = filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -77,7 +85,12 @@ func main() {
 			return nil
 		}
 		if strings.HasSuffix(d.Name(), ".go") {
-			return replaceImports(path, "github.com/openmcp-project/service-provider-template", *module)
+			if err := replaceImports(path, "github.com/openmcp-project/service-provider-template", *module); err != nil {
+				return err
+			}
+			if err := fixImports(path); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -126,6 +139,14 @@ func replaceImports(filename, oldRepo, newRepo string) error {
 	// keep empty line
 	result = append(result, "")
 	return os.WriteFile(filename, []byte(strings.Join(result, "\n")), 0644)
+}
+
+func fixImports(filename string) error {
+	data, err := imports.Process(filename, nil, nil)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename, data, 0644)
 }
 
 func close(filename string, c io.Closer) {

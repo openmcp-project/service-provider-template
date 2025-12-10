@@ -6,9 +6,9 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   labels:
     openmcp.cloud/cluster: platform
-  name: providerconfigs.foo.services.openmcp.cloud
+  name: providerconfigs.{{.Group}}.services.openmcp.cloud
 spec:
-  group: foo.services.openmcp.cloud
+  group: {{.Group}}.services.openmcp.cloud
   names:
     kind: ProviderConfig
     listKind: ProviderConfigList
@@ -16,7 +16,7 @@ spec:
     singular: providerconfig
   scope: Cluster
   versions:
-  - name: v1alpha1
+  - name: {{.Version}}
     schema:
       openAPIV3Schema:
         description: ProviderConfig is the Schema for the providerconfigs API
