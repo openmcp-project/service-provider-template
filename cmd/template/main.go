@@ -54,7 +54,7 @@ func main() {
 	groupVersionFile := filepath.Join(apiDir, "groupversion_info.go")
 	mainFile := filepath.Join(cmdDir, "main.go")
 	controllerFile := filepath.Join(controllerDir, fmt.Sprintf("%s_controller.go", data.KindLower))
-	testFile := filepath.Join(e2eDir, "serviceprovider_test.go")
+	testFile := filepath.Join(e2eDir, fmt.Sprintf("%s_test.go", data.KindLower))
 	testOnboardingFile := filepath.Join(e2eDir, "onboarding", fmt.Sprintf("%s.yaml", data.KindLower))
 	testPlatformFile := filepath.Join(e2eDir, "platform", "providerconfig.yaml")
 	// api

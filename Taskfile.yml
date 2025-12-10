@@ -1,0 +1,12 @@
+version: "3"
+
+tasks:
+  gen-tmpl-help:
+    desc: Show help
+    cmds:
+      - go run ./cmd/template -h
+  gen-tmpl:
+    desc: Run generate
+    cmds:
+      - go run ./cmd/template {{.CLI_ARGS}}
+      - make generate

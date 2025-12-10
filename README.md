@@ -8,13 +8,22 @@ A template for building @openmcp-project Service Providers
 
 ## Requirements and Setup
 
-*Insert a short description what is required to get your project running...*
+Clone this repo and execute the template to create a new service-provider.
+
+The template comes with a basic code generation `cmd` that allows you to generate a service-provider for your go `module`, api `kind` and `group` (prefix). Additionally you can choose to include some dummy code to get a fully running service-provider.
+
+Use `task gen-tmpl-help` for a complete usage overview with the corresponding defaults and execute the template as follows, e.g.:
+
+```shell
+task gen-tmpl -- -kind TestService -group test -module github.com/openmcp-project/service-provider-test
+```
 
 ## Support, Feedback, Contributing
 
 This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/openmcp-project/service-provider-template/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).
 
 ## Security / Disclosure
+
 If you find any bug that may be a security problem, please follow our instructions at [in our security policy](https://github.com/openmcp-project/service-provider-template/security/policy) on how to report it. Please do not create GitHub issues for security-related doubts or problems.
 
 ## Code of Conduct
