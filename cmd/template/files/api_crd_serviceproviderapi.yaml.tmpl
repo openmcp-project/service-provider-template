@@ -6,9 +6,9 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   labels:
     openmcp.cloud/cluster: onboarding
-  name: {{.KindLower}}s.foo.services.openmcp.cloud
+  name: {{.KindLower}}s.{{.Group}}.services.openmcp.cloud
 spec:
-  group: foo.services.openmcp.cloud
+  group: {{.Group}}.services.openmcp.cloud
   names:
     kind: {{.Kind}}
     listKind: {{.Kind}}List
