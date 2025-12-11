@@ -5,7 +5,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// TODO: Move status fuctions and constants to separate repository
 const (
+	// ServiceProviderConditionReady is the condition type used when reporting status
 	ServiceProviderConditionReady = "Ready"
 	// StatusPhaseReady indicates that the resource is ready. All conditions are met and are in status "True".
 	StatusPhaseReady = "Ready"
