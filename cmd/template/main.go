@@ -49,6 +49,12 @@ func main() {
 	cmdDir := filepath.Join("cmd", data.RepoName)
 	controllerDir := filepath.Join("internal", "controller")
 	e2eDir := filepath.Join("test", "e2e")
+
+	err := os.Rename("cmd/template", cmdDir)
+	if err != nil {
+		log.Fatalf("failed to rename directory: %v", err)
+	}
+
 	// files
 	providercrdFile := filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_%ss.yaml", *group, data.KindLower))
 	configcrdFile := filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_providerconfigs.yaml", *group))
