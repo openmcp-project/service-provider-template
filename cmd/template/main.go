@@ -120,7 +120,7 @@ func execTemplate(templateName, outPath string, data TemplateData) {
 		log.Fatalf("failed creating file %s: %v", outPath, err)
 	}
 	log.Default().Println(outPath)
-	defer close(outPath, f)
+	defer closeFile(outPath, f)
 	if err := tpl.Execute(f, data); err != nil {
 		log.Fatalf("failed executing template %s: %v", templateName, err)
 	}
@@ -131,7 +131,7 @@ func replaceImports(filename, oldRepo, newRepo string) error {
 	if err != nil {
 		return err
 	}
-	defer close(filename, input)
+	defer closeFile(filename, input)
 	var result []string
 	scanner := bufio.NewScanner(input)
 	for scanner.Scan() {
@@ -156,7 +156,7 @@ func fixImports(filename string) error {
 	return os.WriteFile(filename, data, 0644)
 }
 
-func close(filename string, c io.Closer) {
+func closeFile(filename string, c io.Closer) {
 	if err := c.Close(); err != nil {
 		log.Fatalf("please reset/checkout %s and try again: %v", filename, err)
 	}
