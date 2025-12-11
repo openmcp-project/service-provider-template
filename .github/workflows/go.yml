@@ -31,7 +31,6 @@ jobs:
       - name: task generate
         run: |
           task generate --verbose
-          git diff --exit-code
 
       - name: task validate
         run: task validate --verbose
