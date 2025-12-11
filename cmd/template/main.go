@@ -50,9 +50,11 @@ func main() {
 	controllerDir := filepath.Join("internal", "controller")
 	e2eDir := filepath.Join("test", "e2e")
 
-	err := os.Rename("cmd/template", cmdDir)
-	if err != nil {
-		log.Fatalf("failed to rename directory: %v", err)
+	if cmdDir != "cmd/service-provider-template" {
+		err := os.Rename("cmd/service-provider-template", cmdDir)
+		if err != nil {
+			log.Fatalf("failed to rename directory: %v", err)
+		}
 	}
 
 	// files
