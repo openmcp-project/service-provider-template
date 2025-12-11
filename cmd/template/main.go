@@ -64,6 +64,7 @@ func main() {
 	groupVersionFile := filepath.Join(apiDir, "groupversion_info.go")
 	mainFile := filepath.Join(cmdDir, "main.go")
 	mainTestFile := filepath.Join(e2eDir, "main_test.go")
+	taskfileFile := "Taskfile.yaml"
 	controllerFile := filepath.Join(controllerDir, fmt.Sprintf("%s_controller.go", data.KindLower))
 	testFile := filepath.Join(e2eDir, fmt.Sprintf("%s_test.go", data.KindLower))
 	testOnboardingFile := filepath.Join(e2eDir, "onboarding", fmt.Sprintf("%s.yaml", data.KindLower))
@@ -82,6 +83,9 @@ func main() {
 	execTemplate("test.go.tmpl", testFile, data)
 	execTemplate("testdata_providerconfig.yaml.tmpl", testPlatformFile, data)
 	execTemplate("testdata_service.yaml.tmpl", testOnboardingFile, data)
+	// root
+	execTemplate("Taskfile.yaml.tmpl", taskfileFile, data)
+
 	// rename module
 	if err := exec.Command("go", "mod", "edit", "-module", *module).Run(); err != nil {
 		log.Fatalf("go mod edit failed: %v", err)
