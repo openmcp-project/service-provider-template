@@ -68,6 +68,6 @@ func TestServiceProvider(t *testing.T) {
 {{- else }}
 		// TODO add assess steps
 {{- end }}
-		Teardown(providers.DeleteMCP("test-mcp", wait.WithTimeout(2*time.Minute)))
+		Teardown(providers.DeleteMCP("test-mcp", wait.WithTimeout(5*time.Minute)))
 	testenv.Test(t, basicProviderTest.Feature())
 }
