@@ -34,8 +34,6 @@ task build:img:build
 go test -v ./test/e2e/... -count=1
 ```
 
-Note that `task gen-tmpl` is a one-time operation. To start over, delete your repository and recreate it from scratch.
-
 ## Support, Feedback, Contributing
 
 This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/openmcp-project/service-provider-template/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).
