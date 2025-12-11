@@ -112,7 +112,7 @@ func (o *{{.Kind}}) GetConditions() *[]metav1.Condition {
 	return &o.Status.Conditions
 }
 
-// SetConditions sets the conditions of the {{.Kind}} resource
+// SetPhase sets the phase of the {{.Kind}} resource status
 func (o *{{.Kind}}) SetPhase(phase string) {
 	o.Status.Phase = phase
 }
