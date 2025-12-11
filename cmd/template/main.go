@@ -25,6 +25,7 @@ type TemplateData struct {
 	Kind        string
 	KindLower   string
 	Module      string
+	RepoName    string
 	WithExample bool
 }
 
@@ -39,12 +40,13 @@ func main() {
 		Kind:        *kind,
 		KindLower:   strings.ToLower(*kind),
 		Module:      *module,
+		RepoName:    filepath.Base(*module),
 		WithExample: *withExample,
 	}
 	// directories
 	apiDir := filepath.Join("api", "v1alpha1")
 	crdDir := filepath.Join("api", "crds", "manifests")
-	cmdDir := "cmd"
+	cmdDir := filepath.Join("cmd", data.RepoName)
 	controllerDir := filepath.Join("internal", "controller")
 	e2eDir := filepath.Join("test", "e2e")
 	// files
@@ -53,6 +55,7 @@ func main() {
 	typesFile := filepath.Join(apiDir, fmt.Sprintf("%s_types.go", data.KindLower))
 	groupVersionFile := filepath.Join(apiDir, "groupversion_info.go")
 	mainFile := filepath.Join(cmdDir, "main.go")
+	mainTestFile := filepath.Join(e2eDir, "main_test.go.tmpl")
 	controllerFile := filepath.Join(controllerDir, fmt.Sprintf("%s_controller.go", data.KindLower))
 	testFile := filepath.Join(e2eDir, fmt.Sprintf("%s_test.go", data.KindLower))
 	testOnboardingFile := filepath.Join(e2eDir, "onboarding", fmt.Sprintf("%s.yaml", data.KindLower))
@@ -67,6 +70,7 @@ func main() {
 	// controller
 	execTemplate("controller.go.tmpl", controllerFile, data)
 	// e2e tests
+	execTemplate("main_test.go.tmpl", mainTestFile, data)
 	execTemplate("test.go.tmpl", testFile, data)
 	execTemplate("testdata_providerconfig.yaml.tmpl", testPlatformFile, data)
 	execTemplate("testdata_service.yaml.tmpl", testOnboardingFile, data)
