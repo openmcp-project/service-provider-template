@@ -6,27 +6,37 @@ on:
 jobs:
   test-e2e:
     name: Run on Ubuntu
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: Clone the code
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
+        with:
+          submodules: recursive
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Set up Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6
         with:
           go-version-file: go.mod
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate template
         run: |
           go run ./cmd/template -v
-          make generate
 
-      - name: Run linter
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.6.2
+      - name: task generate
+        run: |
+          task generate --verbose
+          git diff --exit-code
+
+      - name: task validate
+        run: task validate --verbose
 
       - name: Running Test e2e
         run: |
-          make docker-build
+          task build:img:build
           go test -v ./test/e2e/... -count=1
