@@ -1,16 +1,14 @@
-version: "3"
+version: 3
 
-tasks:
-  gen-tmpl-help:
-    desc: Show help
-    cmds:
-      - go run ./cmd/template -h
-  gen-tmpl:
-    desc: Run generate
-    cmds:
-      - go run ./cmd/template {{.CLI_ARGS}}
-      - make generate
-  test:
-    desc: Run e2e test
-    cmds:
-      - go test -v ./test/e2e/... -count=1
+vars:
+  NESTED_MODULES: api
+  API_DIRS: '{{.ROOT_DIR}}/api/core/v1alpha1/...'
+  MANIFEST_OUT: '{{.ROOT_DIR}}/api/crds/manifests'
+  CODE_DIRS: '{{.ROOT_DIR}}/cmd/... {{.ROOT_DIR}}/internal/... {{.ROOT_DIR}}/test/... {{.ROOT_DIR}}/api/v1alpha1/...'
+  COMPONENTS: 'service-provider-template'
+  REPO_NAME: 'https://github.com/openmcp-project/service-provider-template'
+
+includes:
+  shared:
+    taskfile: hack/common/Taskfile_controller.yaml
+    flatten: true
