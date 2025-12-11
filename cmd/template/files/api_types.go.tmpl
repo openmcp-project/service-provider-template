@@ -62,12 +62,12 @@ type {{.Kind}}Status struct {
 	Phase string `json:"phase"`
 }
 
+// {{.Kind}} is the Schema for the {{.KindLower}}s API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:JSONPath=`.status.phase`,name="Phase",type=string
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:metadata:labels="openmcp.cloud/cluster=onboarding"
-// {{.Kind}} is the Schema for the {{.KindLower}}s API
 type {{.Kind}} struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -97,19 +97,27 @@ func init() {
 	SchemeBuilder.Register(&{{.Kind}}{}, &{{.Kind}}List{})
 }
 
+// Finalizer returns the finalizer string for the {{.Kind}} resource
 func (o *{{.Kind}}) Finalizer() string {
 	return GroupVersion.Group + "/finalizer"
 }
 
+// GetStatus returns the status of the {{.Kind}} resource
 func (o *{{.Kind}}) GetStatus() any {
 	return o.Status
 }
+
+// GetConditions returns the conditions of the {{.Kind}} resource
 func (o *{{.Kind}}) GetConditions() *[]metav1.Condition {
 	return &o.Status.Conditions
 }
+
+// SetConditions sets the conditions of the {{.Kind}} resource
 func (o *{{.Kind}}) SetPhase(phase string) {
 	o.Status.Phase = phase
 }
+
+// SetObservedGeneration sets the observed generation of the {{.Kind}} resource
 func (o *{{.Kind}}) SetObservedGeneration(gen int64) {
 	o.Status.ObservedGeneration = gen
 }
