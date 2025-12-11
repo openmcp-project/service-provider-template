@@ -55,7 +55,7 @@ type ProviderConfig interface {
 
 // SPReconciler implements a generic reconcile loop to separate platform
 // and service provider developer space.
-type SPReconciler[T interface{ APIObject }, PC ProviderConfig] struct {
+type SPReconciler[T APIObject, PC ProviderConfig] struct {
 	PlatformCluster         *clusters.Cluster
 	OnboardingCluster       *clusters.Cluster
 	ClusterAccessReconciler clusteraccess.Reconciler
