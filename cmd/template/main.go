@@ -29,6 +29,7 @@ type TemplateData struct {
 	WithExample bool
 }
 
+//nolint:gocyclo
 func main() {
 	group := flag.String("group", "foo", "GVK group prefix (will always be suffixed with services.openmcp.cloud)")
 	kind := flag.String("kind", "FooService", "GVK kind")
