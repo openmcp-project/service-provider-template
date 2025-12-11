@@ -18,19 +18,20 @@ You can also choose to add sample code to get a fully functional `ServiceProvide
 For a complete usage overview with the default settings, run:
 
 ```shell
-task gen-tmpl-help
+go run ./cmd/template -h
 ```
 
 Then execute the template, for example:
 
 ```shell
-task gen-tmpl -- -module github.com/yourorg/yourrepo -kind YourKind -group yourgroup
+go run ./cmd/template -module github.com/yourorg/yourrepo -kind YourKind -group yourgroup
 ```
 
-Test your `ServiceProvider`:
+Running End-to-End tests:
 
 ```shell
-task test
+task build:img:build
+go test -v ./test/e2e/... -count=1
 ```
 
 Note that `task gen-tmpl` is a one-time operation. To start over, delete your repository and recreate it from scratch.
