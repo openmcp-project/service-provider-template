@@ -3,8 +3,8 @@ module github.com/openmcp-project/service-provider-template
 go 1.25.4
 
 require (
-	github.com/openmcp-project/controller-utils v0.24.0
-	github.com/openmcp-project/openmcp-operator/lib v0.17.1
+	github.com/openmcp-project/controller-utils v0.23.4
+	github.com/openmcp-project/openmcp-operator/lib v0.17.0
 	k8s.io/apimachinery v0.34.2
 	sigs.k8s.io/controller-runtime v0.22.4
 )

@@ -108,6 +108,7 @@ func main() {
 	fmt.Printf("Generated service-provider for %s/%s' in %s\n", data.Group, data.Kind, *module)
 }
 
+//nolint:gocritic
 func execTemplate(templateName, outPath string, data TemplateData) {
 	tplPath := filepath.Join(templatesDir, templateName)
 	tpl, err := template.ParseFiles(tplPath)

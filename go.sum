@@ -116,12 +116,12 @@ github.com/onsi/ginkgo/v2 v2.27.2 h1:LzwLj0b89qtIy6SSASkzlNvX6WktqurSHwkk2ipF/Ns
 github.com/onsi/ginkgo/v2 v2.27.2/go.mod h1:ArE1D/XhNXBXCBkKOLkbsb2c81dQHCRcF5zwn/ykDRo=
 github.com/onsi/gomega v1.38.2 h1:eZCjf2xjZAqe+LeWvKb5weQ+NcPwX84kqJ0cZNxok2A=
 github.com/onsi/gomega v1.38.2/go.mod h1:W2MJcYxRGV63b418Ai34Ud0hEdTVXq9NW9+Sx6uXf3k=
-github.com/openmcp-project/controller-utils v0.24.0 h1:r8mtA9JEb2GXgH4H60FR/jbe0h4/ZbYnAeHmacMsb0g=
-github.com/openmcp-project/controller-utils v0.24.0/go.mod h1:BjMecTCwaSewG7KV0H4P5Y/MeFzI07DGXQstp/dtF7s=
+github.com/openmcp-project/controller-utils v0.23.4 h1:GUPa0tP0kccp5/DheQR9vWfPChEK37KwTpbFHVDQBhc=
+github.com/openmcp-project/controller-utils v0.23.4/go.mod h1:zGsvEJ7P+BjRnDQMVreCOp4Lsx5xpFQ36gm2fcVw34w=
 github.com/openmcp-project/openmcp-operator/api v0.17.1 h1:ZJQWWUHtN7ml98IbSuaHiLfkG/my6LNehsLN62qxE80=
 github.com/openmcp-project/openmcp-operator/api v0.17.1/go.mod h1:4khFA0fuEVDcwptyDkHcH/7BGuMVhouUTUoiu61wqZQ=
-github.com/openmcp-project/openmcp-operator/lib v0.17.1 h1:gzqZXcEmnZxaytwafW/as91E9MtnjXGpo5VlggJLplk=
-github.com/openmcp-project/openmcp-operator/lib v0.17.1/go.mod h1:sqU7DBCqvrlMWIfw6kBTYDJhrVoLtSsazzPfs9hzd5I=
+github.com/openmcp-project/openmcp-operator/lib v0.17.0 h1:42yGu/1LoEd51/noWgr7Bmz33rfHjTm/HKKXlJjHif4=
+github.com/openmcp-project/openmcp-operator/lib v0.17.0/go.mod h1:ZUXmfwL8fPe0iTsx+PB5zHWPZavXTkLOYOj2qF1N6hY=
 github.com/openmcp-project/openmcp-testing v0.1.1-0.20251208155714-b9ea76ead44e h1:fQXqaCKlvDy9jA1ILY4Q+g6dfJm6rUi8fbwUYVGin7A=
 github.com/openmcp-project/openmcp-testing v0.1.1-0.20251208155714-b9ea76ead44e/go.mod h1:/fREbk0BKZPRkZpgnA2SEr1DDNnFnNrQrhW4z7s36CY=
 github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
