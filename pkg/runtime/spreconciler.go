@@ -180,8 +180,10 @@ func (r *SPReconciler[T, PC]) delete(ctx context.Context, obj T, pc PC, mcp *clu
 func (r *SPReconciler[T, PC]) createOrUpdate(
 	ctx context.Context, obj T, pc PC, mcp *clusters.Cluster,
 ) (ctrl.Result, error) {
-	controllerutil.AddFinalizer(obj, obj.Finalizer())
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.OnboardingCluster.Client(), obj, nil); err != nil {
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.OnboardingCluster.Client(), obj, func() error {
+		controllerutil.AddFinalizer(obj, obj.Finalizer())
+		return nil
+	}); err != nil {
 		return ctrl.Result{}, err
 	}
 	return r.DomainServiceReconciler.CreateOrUpdate(ctx, obj, pc, mcp)
