@@ -62,11 +62,11 @@ type ProviderConfigStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
+// ProviderConfig is the Schema for the providerconfigs API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
 // +kubebuilder:metadata:labels="openmcp.cloud/cluster=platform"
-// ProviderConfig is the Schema for the providerconfigs API
 type ProviderConfig struct {
 	metav1.TypeMeta `json:",inline"`
 
