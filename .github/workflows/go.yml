@@ -35,12 +35,5 @@ jobs:
       - name: task validate
         run: task validate --verbose
 
-      - name: Build image
-        run: task build:img:build
-
-      - name: Retag image for tests
-        run: |
-          docker tag ghcr.io/openmcp-project/images/service-provider-template:0.0.1-linux-amd64 ghcr.io/openmcp-project/images/service-provider-template:0.0.1
-
       - name: Running Test e2e
-        run: go test -v ./test/e2e/... -count=1
+        run: task test-e2e
