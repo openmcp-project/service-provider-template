@@ -30,8 +30,7 @@ go run ./cmd/template -module github.com/yourorg/yourrepo -kind YourKind -group 
 Running End-to-End tests:
 
 ```shell
-task build:img:build
-go test -v ./test/e2e/... -count=1
+task test-e2e
 ```
 
 ## Support, Feedback, Contributing
