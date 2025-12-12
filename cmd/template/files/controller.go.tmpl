@@ -47,7 +47,7 @@ type {{.Kind}}Reconciler struct {
 }
 
 // CreateOrUpdate is called on every add or update event
-func (r *{{.Kind}}Reconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.{{.Kind}}, providerConfig *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
+func (r *{{.Kind}}Reconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.{{.Kind}}, _ *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
 {{- if .WithExample }}
 	spruntime.StatusProgressing(svcobj, "Reconciling", "Reconcile in progress")
 	l := logf.FromContext(ctx)
@@ -83,7 +83,7 @@ func (r *{{.Kind}}Reconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1a
 }
 
 // Delete is called on every delete event
-func (r *{{.Kind}}Reconciler) Delete(ctx context.Context, obj *apiv1alpha1.{{.Kind}}, providerConfig *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
+func (r *{{.Kind}}Reconciler) Delete(ctx context.Context, obj *apiv1alpha1.{{.Kind}}, _ *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
 {{- if .WithExample }}
 	l := logf.FromContext(ctx)
 	// remove managed objs
@@ -163,8 +163,8 @@ func (r *{{.Kind}}Reconciler) SetupWithManager(mgr ctrl.Manager, providerConfigU
 					func(ctx context.Context, obj client.Object) []reconcile.Request {
 						// update cached provider config
 						if obj != nil {
-							copy := obj.(*apiv1alpha1.ProviderConfig).DeepCopy()
-							spReconciler.ProviderConfig.Store(&copy)
+							copyPC := obj.(*apiv1alpha1.ProviderConfig).DeepCopy()
+							spReconciler.ProviderConfig.Store(&copyPC)
 						} else {
 							spReconciler.ProviderConfig.Store(nil)
 						}

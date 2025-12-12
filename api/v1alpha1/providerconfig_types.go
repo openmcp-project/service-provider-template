@@ -62,11 +62,11 @@ type ProviderConfigStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
+// ProviderConfig is the Schema for the providerconfigs API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
 // +kubebuilder:metadata:labels="openmcp.cloud/cluster=platform"
-// ProviderConfig is the Schema for the providerconfigs API
 type ProviderConfig struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -96,6 +96,7 @@ func init() {
 	SchemeBuilder.Register(&ProviderConfig{}, &ProviderConfigList{})
 }
 
+// PollInterval returns the poll interval duration from the spec.
 func (o *ProviderConfig) PollInterval() time.Duration {
 	// TODO pollInterval has to be required
 	return o.Spec.PollInterval.Duration
