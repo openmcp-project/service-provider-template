@@ -31,7 +31,10 @@ import (
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	"github.com/openmcp-project/openmcp-operator/api/common"
 	openmcpconst "github.com/openmcp-project/openmcp-operator/api/constants"
+	providerv1alpha1 "github.com/openmcp-project/openmcp-operator/api/provider/v1alpha1"
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess"
+	"github.com/openmcp-project/openmcp-operator/lib/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/openmcp-project/service-provider-template/api/crds"
 	// spruntime "github.com/openmcp-project/service-provider-template/pkg/runtime"
@@ -73,6 +76,7 @@ func initPlatformScheme() {
 	utilruntime.Must(apiextensionv1.AddToScheme(platformScheme))
 	utilruntime.Must({{.KindLower}}sv1alpha1.AddToScheme(platformScheme))
 	utilruntime.Must(clustersv1alpha1.AddToScheme(platformScheme))
+	utilruntime.Must(providerv1alpha1.AddToScheme(platformScheme))
 }
 
 func initOnboardingScheme() {
@@ -88,6 +92,8 @@ func initMcpScheme() {
 
 // nolint:gocyclo
 func main() {
+	var command string
+	var environment, providerName, verbosity string
 	var metricsAddr string
 	var metricsCertPath, metricsCertName, metricsCertKey string
 	var webhookCertPath, webhookCertName, webhookCertKey string
@@ -96,6 +102,9 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var tlsOpts []func(*tls.Config)
+    flag.StringVar(&environment, "environment", "", "Name of the environment")
+    flag.StringVar(&providerName, "provider-name", "", "Name of the provider resource")
+    flag.StringVar(&verbosity, "verbosity", "", "Verbosity level for logging")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -116,6 +125,13 @@ func main() {
 	opts := zap.Options{
 		Development: true,
 	}
+
+    // extract command from os.Args if present to allow further flag parsing
+    if len(os.Args) > 1 {
+        command = os.Args[1]
+        os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
+    }
+
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
@@ -220,7 +236,7 @@ func main() {
 		WithTimeout(30 * time.Minute)
 	ctx := context.Background()
 	// init (job that installs CRDs)
-	if os.Args[1] == "init" {
+	if command == "init" {
 		onboardingCluster, err := clusterAccessManager.CreateAndWaitForCluster(ctx, "onboarding-init",
 			clustersv1alpha1.PURPOSE_ONBOARDING, onboardingScheme, adminPermissions)
 
@@ -236,6 +252,17 @@ func main() {
 		if err := crdManager.CreateOrUpdateCRDs(ctx, &log); err != nil {
 			setupLog.Error(err, "Failed to create or update CRDs")
 		}
+
+		spGVK := metav1.GroupVersionKind{
+			Group:   {{.KindLower}}sv1alpha1.GroupVersion.Group,
+			Version: {{.KindLower}}sv1alpha1.GroupVersion.Version,
+			Kind:    "{{.Kind}}",
+		}
+		if err := utils.RegisterGVKsAtServiceProvider(ctx, platformCluster.Client(), providerName, spGVK); err != nil {
+			setupLog.Error(err, "Failed to register GVK at ServiceProvider")
+			return
+		}
+
 		return
 	}
 	// run (sp controller deployment)
