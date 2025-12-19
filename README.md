@@ -33,6 +33,32 @@ Running End-to-End tests:
 task test-e2e
 ```
 
+## CLI Flags
+
+### Template Generator Flags
+
+The template generator (`cmd/template`) supports the following flags:
+
+- `-module`: Go module path (default: `github.com/openmcp-project/service-provider-template`)
+- `-kind`: GVK kind name (default: `FooService`)
+- `-group`: GVK group prefix, will be suffixed with `services.openmcp.cloud` (default: `foo`)
+- `-v`: Generate with sample code (default: `false`)
+
+### Service Provider Runtime Flags
+
+The generated service provider supports the following runtime flags:
+
+- `--verbosity`: Logging verbosity level (see [controller-runtime logging](https://github.com/kubernetes-sigs/controller-runtime/blob/main/TMP-LOGGING.md))
+- `--environment`: Name of the environment (required for operation)
+- `--provider-name`: Name of the provider resource (required for operation)
+- `--metrics-bind-address`: Address for the metrics endpoint (default: `0`, use `:8443` for HTTPS or `:8080` for HTTP)
+- `--health-probe-bind-address`: Address for health probe endpoint (default: `:8081`)
+- `--leader-elect`: Enable leader election for controller manager (default: `false`)
+- `--metrics-secure`: Serve metrics endpoint securely via HTTPS (default: `true`)
+- `--enable-http2`: Enable HTTP/2 for metrics and webhook servers (default: `false`)
+
+For a complete list of available flags, run the generated binary with `-h` or `--help`.
+
 ## Support, Feedback, Contributing
 
 This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/openmcp-project/service-provider-template/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).
