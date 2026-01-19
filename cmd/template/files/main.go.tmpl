@@ -61,6 +61,9 @@ var (
 	platformScheme   = runtime.NewScheme()
 	onboardingScheme = runtime.NewScheme()
 	mcpScheme        = runtime.NewScheme()
+{{- if .WithWorkloadCluster }}
+	workloadScheme   = runtime.NewScheme()
+{{- end }}
 	setupLog         = ctrl.Log.WithName("setup")
 )
 
@@ -69,6 +72,9 @@ func init() {
 	initPlatformScheme()
 	initOnboardingScheme()
 	initMcpScheme()
+{{- if .WithWorkloadCluster }}
+	initWorkloadScheme()
+{{- end }}
 }
 
 func initPlatformScheme() {
@@ -89,6 +95,12 @@ func initMcpScheme() {
 	utilruntime.Must(clientgoscheme.AddToScheme(mcpScheme))
 	utilruntime.Must(apiextensionv1.AddToScheme(mcpScheme))
 }
+
+{{- if .WithWorkloadCluster }}
+func initWorkloadScheme() {
+	utilruntime.Must(clientgoscheme.AddToScheme(workloadScheme))
+}
+{{- end }}
 
 // nolint:gocyclo
 func main() {
@@ -301,13 +313,25 @@ func main() {
 		PlatformCluster:   platformCluster,
 		ClusterAccessReconciler: clusteraccess.NewClusterAccessReconciler(platformCluster.Client(), "{{.KindLower}}").
 			WithMCPScheme(mcpScheme).
+			{{- if .WithWorkloadCluster }}
+			WithWorkloadScheme(workloadScheme).
+			{{- end }}
 			WithRetryInterval(10 * time.Second).
 			WithMCPPermissions(adminPermissions).WithMCPRoleRefs([]common.RoleRef{
 			{
 				Name: "cluster-admin",
 				Kind: "ClusterRole",
 			},
+		{{- if .WithWorkloadCluster }}
+		}).WithWorkloadPermissions(adminPermissions).WithWorkloadRoleRefs([]common.RoleRef{
+			{
+				Name: "cluster-admin",
+				Kind: "ClusterRole",
+			},
+		}),
+		{{- else }}
 		}).SkipWorkloadCluster(),
+		{{- end }}
 	}).SetupWithManager(mgr, providerConfigUpdates); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "{{.Kind}}")
 		os.Exit(1)
