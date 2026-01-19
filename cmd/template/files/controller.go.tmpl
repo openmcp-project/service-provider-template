@@ -47,12 +47,12 @@ type {{.Kind}}Reconciler struct {
 }
 
 // CreateOrUpdate is called on every add or update event
-func (r *{{.Kind}}Reconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.{{.Kind}}, _ *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
+func (r *{{.Kind}}Reconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.{{.Kind}}, _ *apiv1alpha1.ProviderConfig, clusters spruntime.ClusterContext) (ctrl.Result, error) {
 {{- if .WithExample }}
 	spruntime.StatusProgressing(svcobj, "Reconciling", "Reconcile in progress")
 	l := logf.FromContext(ctx)
 	managedObj := fooCRD()
-	cl := apiextensionclient.NewForConfigOrDie(target.Cluster().GetConfig()).ApiextensionsV1()
+	cl := apiextensionclient.NewForConfigOrDie(clusters.MCPCluster.Cluster().GetConfig()).ApiextensionsV1()
 	existing, err := cl.CustomResourceDefinitions().Get(ctx, managedObj.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		// create
@@ -83,17 +83,17 @@ func (r *{{.Kind}}Reconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1a
 }
 
 // Delete is called on every delete event
-func (r *{{.Kind}}Reconciler) Delete(ctx context.Context, obj *apiv1alpha1.{{.Kind}}, _ *apiv1alpha1.ProviderConfig, target *clusters.Cluster) (ctrl.Result, error) {
+func (r *{{.Kind}}Reconciler) Delete(ctx context.Context, obj *apiv1alpha1.{{.Kind}}, _ *apiv1alpha1.ProviderConfig, clusters spruntime.ClusterContext) (ctrl.Result, error) {
 {{- if .WithExample }}
 	l := logf.FromContext(ctx)
 	// remove managed objs
 	spruntime.StatusTerminating(obj)
 	managedObj := fooCRD()
-	if err := target.Client().Delete(ctx, managedObj); client.IgnoreNotFound(err) != nil {
+	if err := clusters.MCPCluster.Client().Delete(ctx, managedObj); client.IgnoreNotFound(err) != nil {
 		l.Error(err, "delete object failed")
 		return ctrl.Result{}, err
 	}
-	if err := target.Client().Get(ctx, client.ObjectKeyFromObject(managedObj), managedObj); err != nil {
+	if err := clusters.MCPCluster.Client().Get(ctx, client.ObjectKeyFromObject(managedObj), managedObj); err != nil {
 		return reconcile.Result{}, client.IgnoreNotFound(err)
 	}
 	// object still exists
