@@ -35,7 +35,7 @@ func main() {
 	group := flag.String("group", "foo", "GVK group prefix (will always be suffixed with services.openmcp.cloud)")
 	kind := flag.String("kind", "FooService", "GVK kind")
 	withExample := flag.Bool("v", false, "Generate with sample code")
-	withWorkloadCluster := flag.Bool("w", false, "Add workload cluster setup")
+	withWorkloadCluster := flag.Bool("w", false, "Reconcile with workload cluster")
 	module := flag.String("module", "github.com/openmcp-project/service-provider-template", "Go module")
 	flag.Parse()
 	data := TemplateData{
