@@ -65,11 +65,19 @@ type ProviderConfig interface {
 // SPReconciler implements a generic reconcile loop to separate platform
 // and service provider developer space.
 type SPReconciler[T APIObject, PC ProviderConfig] struct {
-	PlatformCluster         *clusters.Cluster
-	OnboardingCluster       *clusters.Cluster
+	// PlatformCluster represents the platform cluster of the v2 architecture
+	PlatformCluster *clusters.Cluster
+	// OnboardingCluster represents the onboarding cluster of the v2 architecture
+	OnboardingCluster *clusters.Cluster
+	// ClusterAccessReconciler reconciles access to MCP and workload clusters
 	ClusterAccessReconciler clusteraccess.Reconciler
+	// DomainServiceReonciler reconciles DomainService the end-user facing onboarding API of a service provider
 	DomainServiceReconciler DomainServiceReconciler[T, PC]
-	ProviderConfig          atomic.Pointer[PC]
+	// ProviderConfig represents the platform operator facing platform API of a service provider
+	ProviderConfig atomic.Pointer[PC]
+	// WithWorkloadCluster defines whether a service provider requires access to a workload cluster
+	// to reconcile its onboarding API
+	WithWorkloadCluster bool
 }
 
 // helper to create an empty APIObject
@@ -252,20 +260,27 @@ func (r *SPReconciler[T, PC]) areAccessRequestsInDeletion(ctx context.Context, r
 
 func (r *SPReconciler[T, PC]) clusters(ctx context.Context, req ctrl.Request) (ClusterContext, ctrl.Result, error) {
 	l := logf.FromContext(ctx)
+	clusters := ClusterContext{
+		PlatformCluster: r.PlatformCluster,
+	}
 	mcp, res, err := r.mcp(ctx, req)
 	if err != nil {
-		return ClusterContext{}, res, err
+		return clusters, res, err
 	}
-	workloadCluster, res, err := r.workloadCluster(ctx, req)
-	if err != nil {
-		l.Error(err, "workload cluster access error")
-		return ClusterContext{}, res, err
+	if mcp == nil {
+		return clusters, res, errors.New("mcp access missing")
 	}
-	if mcp == nil || workloadCluster == nil {
-		return ClusterContext{}, res, errors.New("cluster access missing")
+	clusters.MCPCluster = mcp
+	if r.WithWorkloadCluster {
+		workloadCluster, res, err := r.workloadCluster(ctx, req)
+		if err != nil {
+			l.Error(err, "workload cluster access error")
+			return clusters, res, err
+		}
+		if workloadCluster == nil {
+			return clusters, res, errors.New("workload cluster access missing")
+		}
+		clusters.WorkloadCluster = workloadCluster
 	}
-	return ClusterContext{
-		MCPCluster:      mcp,
-		WorkloadCluster: workloadCluster,
-	}, res, nil
+	return clusters, res, nil
 }
