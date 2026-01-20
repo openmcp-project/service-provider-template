@@ -246,13 +246,15 @@ func (r *SPReconciler[T, PC]) areAccessRequestsInDeletion(ctx context.Context, r
 		return true, nil
 	}
 
-	accessRequest, err = r.ClusterAccessReconciler.WorkloadAccessRequest(ctx, req)
-	if apierrors.IsNotFound(err) {
-		return true, nil
-	} else if err != nil {
-		return false, err
-	} else if accessRequest.DeletionTimestamp != nil {
-		return true, nil
+	if r.WithWorkloadCluster {
+		accessRequest, err = r.ClusterAccessReconciler.WorkloadAccessRequest(ctx, req)
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		} else if err != nil {
+			return false, err
+		} else if accessRequest.DeletionTimestamp != nil {
+			return true, nil
+		}
 	}
 
 	return false, nil
