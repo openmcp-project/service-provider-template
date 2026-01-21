@@ -308,10 +308,13 @@ func main() {
 		os.Exit(1)
 	}
 	providerConfigUpdates := make(chan event.GenericEvent)
-	if err := (&controller.{{.Kind}}Reconciler{
-		OnboardingCluster: onboardingCluster,
-		PlatformCluster:   platformCluster,
-		ClusterAccessReconciler: clusteraccess.NewClusterAccessReconciler(platformCluster.Client(), "{{.KindLower}}").
+	spr := spruntime.NewSPReconciler[*{{.KindLower}}sv1alpha1.{{.Kind}}, *{{.KindLower}}sv1alpha1.ProviderConfig](
+		func() *{{.KindLower}}sv1alpha1.{{.Kind}} { return &{{.KindLower}}sv1alpha1.{{.Kind}}{} },
+	).
+		WithPlatformCluster(platformCluster).
+		WithOnboardingCluster(onboardingCluster).
+		WithDomainServiceReconciler(&controller.{{.KindLower}}Reconciler{}).
+		WithClusterAccessReconciler(clusteraccess.NewClusterAccessReconciler(platformCluster.Client(), "{{.Kind}}").
 			WithMCPScheme(mcpScheme).
 			{{- if .WithWorkloadCluster }}
 			WithWorkloadScheme(workloadScheme).
@@ -321,26 +324,28 @@ func main() {
 			{
 				Name: "cluster-admin",
 				Kind: "ClusterRole",
-			},
-		{{- if .WithWorkloadCluster }}
-		}).WithWorkloadPermissions(adminPermissions).WithWorkloadRoleRefs([]common.RoleRef{
+			}}).
+			{{- if .WithWorkloadCluster }}
+			WithWorkloadPermissions(adminPermissions).WithWorkloadRoleRefs([]common.RoleRef{
 			{
 				Name: "cluster-admin",
 				Kind: "ClusterRole",
 			},
-		}),
-		{{- else }}
-		}).SkipWorkloadCluster(),
-		{{- end }}
-	}).SetupWithManager(mgr, providerConfigUpdates); err != nil {
+		}))
+			{{- else }}
+			.SkipWorkloadCluster(),
+		)
+			{{- end }}
+	if err := spr.SetupWithManager(mgr, "{{.KindLower}}", providerConfigUpdates); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "{{.Kind}}")
 		os.Exit(1)
 	}
-	if err := (&controller.ProviderConfigReconciler{
-		PlatformCluster:       platformCluster,
-		OnboardingCluster:     onboardingCluster,
-		ProviderUpdateChannel: providerConfigUpdates,
-	}).SetupWithManager(mgr); err != nil {
+	pcr := spruntime.NewPCReconciler(func() *{{.KindLower}}sv1alpha1.ProviderConfig {
+		return &{{.KindLower}}sv1alpha1.ProviderConfig{}
+	}).
+		WithPlatformCluster(platformCluster).
+		WithUpdateChannel(providerConfigUpdates)
+	if err := pcr.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ProviderConfig")
 		os.Exit(1)
 	}
