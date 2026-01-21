@@ -38,7 +38,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/openmcp-project/service-provider-template/api/crds"
-	// spruntime "github.com/openmcp-project/service-provider-template/pkg/runtime"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -315,7 +314,7 @@ func main() {
 	).
 		WithPlatformCluster(platformCluster).
 		WithOnboardingCluster(onboardingCluster).
-		WithDomainServiceReconciler(&controller.{{.KindLower}}Reconciler{}).
+		WithDomainServiceReconciler(&controller.{{.Kind}}Reconciler{}).
 		WithClusterAccessReconciler(clusteraccess.NewClusterAccessReconciler(platformCluster.Client(), "{{.Kind}}").
 			WithMCPScheme(mcpScheme).
 			{{- if .WithWorkloadCluster }}
