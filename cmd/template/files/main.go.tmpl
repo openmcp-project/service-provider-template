@@ -334,7 +334,7 @@ func main() {
 			},
 		}))
 			{{- else }}
-			.SkipWorkloadCluster(),
+			SkipWorkloadCluster(),
 		)
 			{{- end }}
 	if err := spr.SetupWithManager(mgr, "{{.KindLower}}", providerConfigUpdates); err != nil {
