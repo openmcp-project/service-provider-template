@@ -314,7 +314,7 @@ func main() {
 	).
 		WithPlatformCluster(platformCluster).
 		WithOnboardingCluster(onboardingCluster).
-		WithDomainServiceReconciler(&controller.{{.Kind}}Reconciler{}).
+		WithServiceProviderReconciler(&controller.{{.Kind}}Reconciler{}).
 		WithClusterAccessReconciler(clusteraccess.NewClusterAccessReconciler(platformCluster.Client(), "{{.Kind}}").
 			WithMCPScheme(mcpScheme).
 			{{- if .WithWorkloadCluster }}
