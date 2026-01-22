@@ -31,9 +31,14 @@ type DomainServiceReconciler[T APIObject, PC ProviderConfig] interface {
 }
 
 // ClusterContext provides access to any potential target cluster
+// More info on the deployment model:
+// https://openmcp-project.github.io/docs/about/design/service-provider#deployment-model
 type ClusterContext struct {
-	MCPCluster      *clusters.Cluster
+	// MCPCluster is the managed control plane that belongs to the current reconcile request
+	MCPCluster *clusters.Cluster
+	// WorkloadCluster is the workload cluster that belongs the current reconcile request
 	WorkloadCluster *clusters.Cluster
+	// PlatformCluster is the static platform cluster
 	PlatformCluster *clusters.Cluster
 }
 
