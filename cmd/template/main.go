@@ -20,13 +20,14 @@ import (
 const templatesDir = "cmd/template/files"
 
 type TemplateData struct {
-	Group       string
-	Version     string
-	Kind        string
-	KindLower   string
-	Module      string
-	RepoName    string
-	WithExample bool
+	Group               string
+	Version             string
+	Kind                string
+	KindLower           string
+	Module              string
+	RepoName            string
+	WithExample         bool
+	WithWorkloadCluster bool
 }
 
 //nolint:gocyclo
@@ -34,15 +35,17 @@ func main() {
 	group := flag.String("group", "foo", "GVK group prefix (will always be suffixed with services.openmcp.cloud)")
 	kind := flag.String("kind", "FooService", "GVK kind")
 	withExample := flag.Bool("v", false, "Generate with sample code")
+	withWorkloadCluster := flag.Bool("w", false, "Reconcile with workload cluster")
 	module := flag.String("module", "github.com/openmcp-project/service-provider-template", "Go module")
 	flag.Parse()
 	data := TemplateData{
-		Group:       *group,
-		Kind:        *kind,
-		KindLower:   strings.ToLower(*kind),
-		Module:      *module,
-		RepoName:    filepath.Base(*module),
-		WithExample: *withExample,
+		Group:               *group,
+		Kind:                *kind,
+		KindLower:           strings.ToLower(*kind),
+		Module:              *module,
+		RepoName:            filepath.Base(*module),
+		WithExample:         *withExample,
+		WithWorkloadCluster: *withWorkloadCluster,
 	}
 	// directories
 	apiDir := filepath.Join("api", "v1alpha1")
