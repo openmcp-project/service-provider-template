@@ -43,7 +43,7 @@ The template generator (`cmd/template`) supports the following flags:
 - `-kind`: GVK kind name (default: `FooService`)
 - `-group`: GVK group prefix, will be suffixed with `services.openmcp.cloud` (default: `foo`)
 - `-v`: Generate with sample code (default: `false`)
-- `-w`: Generate a service provider that reconciles its `ServiceProviderAPI` on the [WorkloadCluster](https://openmcp-project.github.io/docs/about/design/service-provider#deployment-model) (default: `false`)
+- `-w`: Generate a service provider that reconciles its `DomainServiceAPI` on the [WorkloadCluster](https://openmcp-project.github.io/docs/about/design/service-provider#deployment-model) (default: `false`)
 
 ### Service Provider Runtime Flags
 
