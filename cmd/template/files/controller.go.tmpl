@@ -34,6 +34,12 @@ import (
 
 // {{.Kind}}Reconciler reconciles a {{.Kind}} object
 type {{.Kind}}Reconciler struct {
+	// OnboardingCluster is the cluster where this controller watches {{.Kind}} resources and reacts to their changes.
+	OnboardingCluster *clusters.Cluster
+	// PlatformCluster is the cluster where this controller is deployed and configured.
+	PlatformCluster   *clusters.Cluster
+	// PodNamespace is the namespace where this controller is deployed in.
+	PodNamespace string
 }
 
 // CreateOrUpdate is called on every add or update event

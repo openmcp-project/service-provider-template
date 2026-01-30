@@ -224,6 +224,11 @@ func main() {
 		setupLog.Error(err, "Failed to initialize platform cluster")
 		os.Exit(1)
 	}
+	podNamespace := os.Getenv(openmcpconst.EnvVariablePodNamespace)
+	if podNamespace == "" {
+		setupLog.Error(fmt.Errorf("environment variable %s not set - cannot determine source namespace for secrets", openmcpconst.EnvVariablePodNamespace), "pod namespace missing")
+		os.Exit(1)
+	}
 	// TODO: define minimum set of permission required to run the init and run part of your service provider
 	adminPermissions := []clustersv1alpha1.PermissionsRequest{
 		{
@@ -314,7 +319,11 @@ func main() {
 	).
 		WithPlatformCluster(platformCluster).
 		WithOnboardingCluster(onboardingCluster).
-		WithServiceProviderReconciler(&controller.{{.Kind}}Reconciler{}).
+		WithServiceProviderReconciler(&controller.{{.Kind}}Reconciler{
+			OnboardingCluster: onboardingCluster,
+			PlatformCluster:   platformCluster,
+			PodNamespace:      podNamespace,
+		}).
 		WithClusterAccessReconciler(clusteraccess.NewClusterAccessReconciler(platformCluster.Client(), "{{.Kind}}").
 			WithMCPScheme(mcpScheme).
 			{{- if .WithWorkloadCluster }}

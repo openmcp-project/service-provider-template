@@ -30,7 +30,10 @@ type ServiceProviderReconciler[T ServiceProviderAPI, PC ProviderConfig] interfac
 	Delete(ctx context.Context, obj T, pc PC, clusters ClusterContext) (ctrl.Result, error)
 }
 
-// ClusterContext provides access to any potential target cluster
+// ClusterContext provides access to request-scoped clusters.
+// These clusters include the managed control plane and workload clusters associated with a specific reconcile request.
+// (Static clusters like the platform and onboarding clusters are provided to the reconciler when it is initialized.)
+//
 // More info on the deployment model:
 // https://openmcp-project.github.io/docs/about/design/service-provider#deployment-model
 type ClusterContext struct {
@@ -38,8 +41,6 @@ type ClusterContext struct {
 	MCPCluster *clusters.Cluster
 	// WorkloadCluster is the workload cluster that belongs the current reconcile request
 	WorkloadCluster *clusters.Cluster
-	// PlatformCluster is the static platform cluster
-	PlatformCluster *clusters.Cluster
 }
 
 // ServiceProviderAPI represents the end-user facing onboarding api type
@@ -266,9 +267,7 @@ func (r *SPReconciler[T, PC]) areAccessRequestsInDeletion(ctx context.Context, r
 // to delivery its service.
 func (r *SPReconciler[T, PC]) clusters(ctx context.Context, req ctrl.Request) (ClusterContext, ctrl.Result, error) {
 	l := logf.FromContext(ctx)
-	clusters := ClusterContext{
-		PlatformCluster: r.platformCluster,
-	}
+	clusters := ClusterContext{}
 	mcp, res, err := r.mcp(ctx, req)
 	if err != nil {
 		return clusters, res, err
