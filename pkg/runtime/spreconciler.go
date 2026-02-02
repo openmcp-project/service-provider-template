@@ -90,32 +90,38 @@ type SPReconciler[T ServiceProviderAPI, PC ProviderConfig] struct {
 	emptyObj func() T
 }
 
-func NewSPReconciler[T ServiceProviderAPI, PC ProviderConfig](emptyApiObj func() T) *SPReconciler[T, PC] {
+// NewSPReconciler creates a reconciler instance for the given types.
+func NewSPReconciler[T ServiceProviderAPI, PC ProviderConfig](emptyObj func() T) *SPReconciler[T, PC] {
 	return &SPReconciler[T, PC]{
-		emptyObj: emptyApiObj,
+		emptyObj: emptyObj,
 	}
 }
 
+// WithPlatformCluster set the platform cluster.
 func (r *SPReconciler[T, PC]) WithPlatformCluster(c *clusters.Cluster) *SPReconciler[T, PC] {
 	r.platformCluster = c
 	return r
 }
 
+// WithOnboardingCluster set the onboarding cluster.
 func (r *SPReconciler[T, PC]) WithOnboardingCluster(c *clusters.Cluster) *SPReconciler[T, PC] {
 	r.onboardingCluster = c
 	return r
 }
 
+// WithClusterAccessReconciler sets the cluster access reconciler.
 func (r *SPReconciler[T, PC]) WithClusterAccessReconciler(car clusteraccess.Reconciler) *SPReconciler[T, PC] {
 	r.clusterAccessReconciler = car
 	return r
 }
 
+// WithServiceProviderReconciler sets the service provider reconciler.
 func (r *SPReconciler[T, PC]) WithServiceProviderReconciler(dsr ServiceProviderReconciler[T, PC]) *SPReconciler[T, PC] {
 	r.serviceProviderReconciler = dsr
 	return r
 }
 
+// WithWorkloadCluster sets if the service provider reconciler requests a workload cluster
 func (r *SPReconciler[T, PC]) WithWorkloadCluster(b bool) *SPReconciler[T, PC] {
 	r.withWorkloadCluster = b
 	return r
@@ -161,11 +167,11 @@ func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (
 	}, nil
 }
 
-func (r *SPReconciler[T, PC]) updateStatus(ctx context.Context, new T, old T) {
-	if equality.Semantic.DeepEqual(old.GetStatus(), new.GetStatus()) {
+func (r *SPReconciler[T, PC]) updateStatus(ctx context.Context, newObj T, oldObj T) {
+	if equality.Semantic.DeepEqual(oldObj.GetStatus(), newObj.GetStatus()) {
 		return
 	}
-	if err := r.onboardingCluster.Client().Status().Patch(ctx, new, client.MergeFrom(old)); err != nil {
+	if err := r.onboardingCluster.Client().Status().Patch(ctx, newObj, client.MergeFrom(oldObj)); err != nil {
 		l := logf.FromContext(ctx)
 		l.Error(err, "Patch status failed")
 	}
@@ -241,29 +247,28 @@ func (r *SPReconciler[T, PC]) createOrUpdate(ctx context.Context, obj T, pc PC) 
 
 // areAccessRequestsInDeletion determines if the access requests for a reconcile request are in deletion.
 // It returns true if any access requests (mcp, workload) is deleted or has a deletion timestamp.
+// It is used to prevent renewing cluster access when deleting an ServiceProviderAPI object.
 func (r *SPReconciler[T, PC]) areAccessRequestsInDeletion(ctx context.Context, req ctrl.Request) (bool, error) {
 	accessRequest, err := r.clusterAccessReconciler.MCPAccessRequest(ctx, req)
-	if apierrors.IsNotFound(err) {
+	if apierrors.IsNotFound(err) || accessRequest.DeletionTimestamp != nil {
 		return true, nil
-	} else if err != nil {
+	}
+	if err != nil {
 		return false, err
-	} else if accessRequest.DeletionTimestamp != nil {
-		return true, nil
 	}
 	if r.withWorkloadCluster {
 		accessRequest, err = r.clusterAccessReconciler.WorkloadAccessRequest(ctx, req)
-		if apierrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) || accessRequest.DeletionTimestamp != nil {
 			return true, nil
-		} else if err != nil {
+		}
+		if err != nil {
 			return false, err
-		} else if accessRequest.DeletionTimestamp != nil {
-			return true, nil
 		}
 	}
 	return false, nil
 }
 
-// clusters returns any potential target cluster that a servicer provider developer might want to access in order
+// clusters returns any request scoped cluster that a servicer provider developer might want to access in order
 // to delivery its service.
 func (r *SPReconciler[T, PC]) clusters(ctx context.Context, req ctrl.Request) (ClusterContext, ctrl.Result, error) {
 	l := logf.FromContext(ctx)
@@ -332,8 +337,8 @@ func (r *SPReconciler[T, PC]) SetupWithManager(mgr ctrl.Manager, name string, pr
 					func(ctx context.Context, obj client.Object) []reconcile.Request {
 						// update cached provider config
 						if obj != nil {
-							copy := obj.DeepCopyObject().(PC)
-							r.providerConfig.Store(&copy)
+							c := obj.DeepCopyObject().(PC)
+							r.providerConfig.Store(&c)
 						} else {
 							r.providerConfig.Store(nil)
 						}
