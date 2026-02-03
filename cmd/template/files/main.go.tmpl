@@ -350,7 +350,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "{{.Kind}}")
 		os.Exit(1)
 	}
-	pcr := spruntime.NewPCReconciler(func() *{{.KindLower}}sv1alpha1.ProviderConfig {
+	pcr := spruntime.NewPCReconciler(providerName, func() *{{.KindLower}}sv1alpha1.ProviderConfig {
 		return &{{.KindLower}}sv1alpha1.ProviderConfig{}
 	}).
 		WithPlatformCluster(platformCluster).

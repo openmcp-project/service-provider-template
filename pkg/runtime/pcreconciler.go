@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
+	"github.com/openmcp-project/controller-utils/pkg/controller"
 )
 
 // PCReconciler notifies the service provider about provider config updates
@@ -34,13 +35,15 @@ import (
 type PCReconciler[T ProviderConfig] struct {
 	platformCluster       *clusters.Cluster
 	providerUpdateChannel chan event.GenericEvent
+	providerName          string
 	emptyObj              func() T
 }
 
 // NewPCReconciler creates a new provider PCReconciler instance.
-func NewPCReconciler[T ProviderConfig](emptyObj func() T) *PCReconciler[T] {
+func NewPCReconciler[T ProviderConfig](providerName string, emptyObj func() T) *PCReconciler[T] {
 	return &PCReconciler[T]{
-		emptyObj: emptyObj,
+		providerName: providerName,
+		emptyObj:     emptyObj,
 	}
 }
 
@@ -76,7 +79,12 @@ func (r *PCReconciler[T]) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 // SetupWithManager sets up the controller with the Manager.
 func (r *PCReconciler[T]) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		WatchesRawSource(source.Kind(r.platformCluster.Cluster().GetCache(), r.emptyObj(), &handler.TypedEnqueueRequestForObject[T]{})).
+		WatchesRawSource(source.Kind(
+			r.platformCluster.Cluster().GetCache(),
+			r.emptyObj(),
+			&handler.TypedEnqueueRequestForObject[T]{},
+			controller.ToTypedPredicate[T](controller.ExactNamePredicate(r.providerName, "")),
+		)).
 		Named("providerconfig").
 		Complete(r)
 }
