@@ -3,37 +3,55 @@ package runtime
 import (
 	"context"
 	"errors"
-	"reflect"
 	"sync/atomic"
 	"time"
 
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess"
 	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// DomainServiceReconciler implements any business logic required to manage your APIObject
-type DomainServiceReconciler[T APIObject, PC ProviderConfig] interface {
+// ServiceProviderReconciler implements any business logic required to manage ServiceProviderAPI objects
+type ServiceProviderReconciler[T ServiceProviderAPI, PC ProviderConfig] interface {
 	// CreateOrUpdate is called on every add or update event
-	CreateOrUpdate(ctx context.Context, obj T, pc PC, target *clusters.Cluster) (ctrl.Result, error)
+	CreateOrUpdate(ctx context.Context, obj T, pc PC, clusters ClusterContext) (ctrl.Result, error)
 	// Delete is called on every delete event
-	Delete(ctx context.Context, obj T, pc PC, target *clusters.Cluster) (ctrl.Result, error)
+	Delete(ctx context.Context, obj T, pc PC, clusters ClusterContext) (ctrl.Result, error)
 }
 
-// APIObject represents an onboarding api type
-type APIObject interface {
+// ClusterContext provides access to request-scoped clusters.
+// These clusters include the managed control plane and workload clusters associated with a specific reconcile request.
+// (Static clusters like the platform and onboarding clusters are provided to the reconciler when it is initialized.)
+//
+// More info on the deployment model:
+// https://openmcp-project.github.io/docs/about/design/service-provider#deployment-model
+type ClusterContext struct {
+	// MCPCluster is the managed control plane that belongs to the current reconcile request
+	MCPCluster *clusters.Cluster
+	// WorkloadCluster is the workload cluster that belongs the current reconcile request
+	WorkloadCluster *clusters.Cluster
+}
+
+// ServiceProviderAPI represents the end-user facing onboarding api type
+type ServiceProviderAPI interface {
 	client.Object
-	APIObjectStatus
+	ServiceProviderAPIStatus
 	Finalizer() string
 }
 
-// APIObjectStatus represents the status type of an onboarding api type
-type APIObjectStatus interface {
+// ServiceProviderAPIStatus represents the common status contract of ServiceProviderAPI types
+type ServiceProviderAPIStatus interface {
 	// GetStatus returns the status object
 	GetStatus() any
 	// GetConditions returns the status object
@@ -55,60 +73,84 @@ type ProviderConfig interface {
 
 // SPReconciler implements a generic reconcile loop to separate platform
 // and service provider developer space.
-type SPReconciler[T APIObject, PC ProviderConfig] struct {
-	PlatformCluster         *clusters.Cluster
-	OnboardingCluster       *clusters.Cluster
-	ClusterAccessReconciler clusteraccess.Reconciler
-	DomainServiceReconciler DomainServiceReconciler[T, PC]
-	ProviderConfig          atomic.Pointer[PC]
+type SPReconciler[T ServiceProviderAPI, PC ProviderConfig] struct {
+	// platformCluster represents the platform cluster of the v2 architecture
+	platformCluster *clusters.Cluster
+	// onboardingCluster represents the onboarding cluster of the v2 architecture
+	onboardingCluster *clusters.Cluster
+	// clusterAccessReconciler reconciles access to MCP and workload clusters
+	clusterAccessReconciler clusteraccess.Reconciler
+	// serviceProviderReonciler reconciles the end-user facing onboarding API of a service provider
+	serviceProviderReconciler ServiceProviderReconciler[T, PC]
+	// providerConfig represents the platform operator facing platform API of a service provider
+	providerConfig atomic.Pointer[PC]
+	// withWorkloadCluster defines whether a service provider requires access to a workload cluster
+	withWorkloadCluster bool
+	// emptyObj creates an empty object of the api type
+	emptyObj func() T
 }
 
-// helper to create an empty APIObject
-// background is the pointer/value receiver mismatch of the generated api types
-// that don't satisfy client.Object
-func (r *SPReconciler[T, PC]) emptyAPIObject() T {
-	var t T
-	// create elem based on type
-	val := reflect.New(reflect.TypeOf(t).Elem())
-	// cast empty elem back
-	return val.Interface().(T)
+// NewSPReconciler creates a reconciler instance for the given types.
+func NewSPReconciler[T ServiceProviderAPI, PC ProviderConfig](emptyObj func() T) *SPReconciler[T, PC] {
+	return &SPReconciler[T, PC]{
+		emptyObj: emptyObj,
+	}
+}
+
+// WithPlatformCluster set the platform cluster.
+func (r *SPReconciler[T, PC]) WithPlatformCluster(c *clusters.Cluster) *SPReconciler[T, PC] {
+	r.platformCluster = c
+	return r
+}
+
+// WithOnboardingCluster set the onboarding cluster.
+func (r *SPReconciler[T, PC]) WithOnboardingCluster(c *clusters.Cluster) *SPReconciler[T, PC] {
+	r.onboardingCluster = c
+	return r
+}
+
+// WithClusterAccessReconciler sets the cluster access reconciler.
+func (r *SPReconciler[T, PC]) WithClusterAccessReconciler(car clusteraccess.Reconciler) *SPReconciler[T, PC] {
+	r.clusterAccessReconciler = car
+	return r
+}
+
+// WithServiceProviderReconciler sets the service provider reconciler.
+func (r *SPReconciler[T, PC]) WithServiceProviderReconciler(dsr ServiceProviderReconciler[T, PC]) *SPReconciler[T, PC] {
+	r.serviceProviderReconciler = dsr
+	return r
+}
+
+// WithWorkloadCluster sets if the service provider reconciler requests a workload cluster
+func (r *SPReconciler[T, PC]) WithWorkloadCluster(b bool) *SPReconciler[T, PC] {
+	r.withWorkloadCluster = b
+	return r
 }
 
 // Reconcile orchestrates platform and DomainServiceReconciler logic to reconcile APIObjects
 func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := logf.FromContext(ctx)
 	// common reconciler logic including get obj, providerconfig, mcp/workload access
-	obj := r.emptyAPIObject()
-	if err := r.OnboardingCluster.Client().Get(ctx, req.NamespacedName, obj); err != nil {
+	obj := r.emptyObj()
+	if err := r.onboardingCluster.Client().Get(ctx, req.NamespacedName, obj); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	oldObj := obj.DeepCopyObject().(T)
-	providerConfig := r.ProviderConfig.Load()
+	providerConfig := r.providerConfig.Load()
 	if providerConfig == nil {
 		StatusProgressing(obj, "ReconcileError", "No ProviderConfig found")
 		r.updateStatus(ctx, obj, oldObj)
 		return ctrl.Result{}, errors.New("provider config missing")
 	}
 	providerConfigCopy := (*providerConfig).DeepCopyObject().(PC)
-	// TODO workload cluster access
-	mcp, res, err := r.mcp(ctx, req)
-	if err != nil {
-		l.Error(err, "cluster access error")
-		StatusProgressing(obj, "ReconcileError", "target cluster access error")
-		r.updateStatus(ctx, obj, oldObj)
-		return ctrl.Result{}, err
-	}
-	if mcp == nil {
-		StatusProgressing(obj, "Reconciling", "target cluster access is being set up")
-		r.updateStatus(ctx, obj, oldObj)
-		return res, nil
-	}
 	// core crud
 	deleted := !obj.GetDeletionTimestamp().IsZero()
+	var res ctrl.Result
+	var err error
 	if deleted {
-		res, err = r.delete(ctx, obj, providerConfigCopy, mcp)
+		res, err = r.delete(ctx, obj, providerConfigCopy)
 	} else {
-		res, err = r.createOrUpdate(ctx, obj, providerConfigCopy, mcp)
+		res, err = r.createOrUpdate(ctx, obj, providerConfigCopy)
 		r.updateStatus(ctx, obj, oldObj)
 	}
 	// return based on result/err
@@ -125,44 +167,49 @@ func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (
 	}, nil
 }
 
-func (r *SPReconciler[T, PC]) updateStatus(ctx context.Context, new T, old T) {
-	if equality.Semantic.DeepEqual(old.GetStatus(), new.GetStatus()) {
+func (r *SPReconciler[T, PC]) updateStatus(ctx context.Context, newObj T, oldObj T) {
+	if equality.Semantic.DeepEqual(oldObj.GetStatus(), newObj.GetStatus()) {
 		return
 	}
-	if err := r.OnboardingCluster.Client().Status().Patch(ctx, new, client.MergeFrom(old)); err != nil {
+	if err := r.onboardingCluster.Client().Status().Patch(ctx, newObj, client.MergeFrom(oldObj)); err != nil {
 		l := logf.FromContext(ctx)
 		l.Error(err, "Patch status failed")
 	}
 }
 
-func (r *SPReconciler[T, PC]) mcp(ctx context.Context, req ctrl.Request) (*clusters.Cluster, ctrl.Result, error) {
-	res, err := r.ClusterAccessReconciler.Reconcile(ctx, req)
-	if err != nil {
-		return nil, ctrl.Result{}, err
-	}
-	if res.RequeueAfter > 0 {
-		return nil, res, nil
-	}
-	mcpCluster, err := r.ClusterAccessReconciler.MCPCluster(ctx, req)
-	if err != nil {
-		return nil, ctrl.Result{}, err
-	}
-	return mcpCluster, ctrl.Result{}, nil
-}
-
-func (r *SPReconciler[T, PC]) delete(ctx context.Context, obj T, pc PC, mcp *clusters.Cluster) (ctrl.Result, error) {
+// delete eventually invokes the domain delete logic of a service provider and is the place to implement
+// common logic that should be abstracted away from a service provider developer like handling cluster access.
+func (r *SPReconciler[T, PC]) delete(ctx context.Context, obj T, pc PC) (ctrl.Result, error) {
+	l := logf.FromContext(ctx)
 	oldObj := obj.DeepCopyObject().(T)
-	res, err := r.DomainServiceReconciler.Delete(ctx, obj, pc, mcp)
-	r.updateStatus(ctx, obj, oldObj)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if res.RequeueAfter > 0 {
-		return res, nil
-	}
-	// remove mcp access
+
 	req := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(obj)}
-	res, err = r.ClusterAccessReconciler.ReconcileDelete(ctx, req)
+	accessRequestsInDeletion, err := r.areAccessRequestsInDeletion(ctx, req)
+	if err != nil {
+		l.Error(err, "failed to check access requests in deletion")
+		return reconcile.Result{}, err
+	}
+	if !accessRequestsInDeletion {
+		clusters, res, err := r.clusters(ctx, req)
+		if err != nil {
+			StatusProgressing(obj, "ReconcileError", "cluster setup error")
+			return ctrl.Result{}, err
+		}
+		if res.RequeueAfter > 0 {
+			StatusProgressing(obj, "Reconciling", "clusters being setup")
+			return res, nil
+		}
+		res, err = r.serviceProviderReconciler.Delete(ctx, obj, pc, clusters)
+		r.updateStatus(ctx, obj, oldObj)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if res.RequeueAfter > 0 {
+			return res, nil
+		}
+	}
+	// remove cluster access
+	res, err := r.clusterAccessReconciler.ReconcileDelete(ctx, req)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -172,19 +219,123 @@ func (r *SPReconciler[T, PC]) delete(ctx context.Context, obj T, pc PC, mcp *clu
 	}
 	// remove finalizer
 	controllerutil.RemoveFinalizer(obj, obj.Finalizer())
-	if err := r.OnboardingCluster.Client().Update(ctx, obj); err != nil {
+	if err := r.onboardingCluster.Client().Update(ctx, obj); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
 }
-func (r *SPReconciler[T, PC]) createOrUpdate(
-	ctx context.Context, obj T, pc PC, mcp *clusters.Cluster,
-) (ctrl.Result, error) {
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.OnboardingCluster.Client(), obj, func() error {
+
+// createOrUpdate eventually invokes the domain createOrUpdate logic of a service provider and is the place to implement
+// common logic that should be abstracted away from a service provider developer like handling cluster access.
+func (r *SPReconciler[T, PC]) createOrUpdate(ctx context.Context, obj T, pc PC) (ctrl.Result, error) {
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.onboardingCluster.Client(), obj, func() error {
 		controllerutil.AddFinalizer(obj, obj.Finalizer())
 		return nil
 	}); err != nil {
 		return ctrl.Result{}, err
 	}
-	return r.DomainServiceReconciler.CreateOrUpdate(ctx, obj, pc, mcp)
+	req := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(obj)}
+	clusters, res, err := r.clusters(ctx, req)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if res.RequeueAfter > 0 {
+		return res, nil
+	}
+	return r.serviceProviderReconciler.CreateOrUpdate(ctx, obj, pc, clusters)
+}
+
+// areAccessRequestsInDeletion determines if the access requests for a reconcile request are in deletion.
+// It returns true if any access requests (mcp, workload) is deleted or has a deletion timestamp.
+// It is used to prevent renewing cluster access when deleting an ServiceProviderAPI object.
+func (r *SPReconciler[T, PC]) areAccessRequestsInDeletion(ctx context.Context, req ctrl.Request) (bool, error) {
+	accessRequest, err := r.clusterAccessReconciler.MCPAccessRequest(ctx, req)
+	if apierrors.IsNotFound(err) || accessRequest.DeletionTimestamp != nil {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if r.withWorkloadCluster {
+		accessRequest, err = r.clusterAccessReconciler.WorkloadAccessRequest(ctx, req)
+		if apierrors.IsNotFound(err) || accessRequest.DeletionTimestamp != nil {
+			return true, nil
+		}
+		if err != nil {
+			return false, err
+		}
+	}
+	return false, nil
+}
+
+// clusters returns any request scoped cluster that a servicer provider developer might want to access in order
+// to delivery its service.
+func (r *SPReconciler[T, PC]) clusters(ctx context.Context, req ctrl.Request) (ClusterContext, ctrl.Result, error) {
+	l := logf.FromContext(ctx)
+	clusters := ClusterContext{}
+	res, err := r.clusterAccessReconciler.Reconcile(ctx, req)
+	if err != nil {
+		return clusters, ctrl.Result{}, err
+	}
+	if res.RequeueAfter > 0 {
+		return clusters, res, nil
+	}
+	mcpCluster, err := r.clusterAccessReconciler.MCPCluster(ctx, req)
+	if err != nil {
+		return clusters, ctrl.Result{}, err
+	}
+	if mcpCluster == nil {
+		return clusters, res, errors.New("mcp access missing")
+	}
+	clusters.MCPCluster = mcpCluster
+	if r.withWorkloadCluster {
+		workloadCluster, err := r.clusterAccessReconciler.WorkloadCluster(ctx, req)
+		if err != nil {
+			l.Error(err, "workload cluster access error")
+			return clusters, ctrl.Result{}, err
+		}
+		if workloadCluster == nil {
+			return clusters, res, errors.New("workload cluster access missing")
+		}
+		clusters.WorkloadCluster = workloadCluster
+	}
+	return clusters, res, nil
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *SPReconciler[T, PC]) SetupWithManager(mgr ctrl.Manager, name string, providerConfigUpdates chan event.GenericEvent) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(r.emptyObj()).
+		// sets up reconciles whenever provider config controller sends update events
+		WatchesRawSource(
+			source.Channel(
+				providerConfigUpdates,
+				handler.EnqueueRequestsFromMapFunc(
+					func(ctx context.Context, obj client.Object) []reconcile.Request {
+						// update cached provider config
+						if obj != nil {
+							c := obj.DeepCopyObject().(PC)
+							r.providerConfig.Store(&c)
+						} else {
+							r.providerConfig.Store(nil)
+						}
+						// reconcile all existing objects
+						var list unstructured.UnstructuredList
+						gvk := r.emptyObj().GetObjectKind().GroupVersionKind()
+						list.SetGroupVersionKind(gvk)
+						if err := r.onboardingCluster.Client().List(ctx, &list); err != nil {
+							return nil
+						}
+						reqs := make([]reconcile.Request, len(list.Items))
+						for i := range list.Items {
+							reqs[i] = reconcile.Request{
+								NamespacedName: client.ObjectKeyFromObject(&list.Items[i]),
+							}
+						}
+						return reqs
+					},
+				)),
+		).
+		Named(name).
+		Complete(r)
 }

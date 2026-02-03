@@ -38,7 +38,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/openmcp-project/service-provider-template/api/crds"
-	// spruntime "github.com/openmcp-project/service-provider-template/pkg/runtime"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -52,6 +51,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	spruntime "github.com/openmcp-project/service-provider-template/pkg/runtime"
+
 	{{.KindLower}}sv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
 	"github.com/openmcp-project/service-provider-template/internal/controller"
 	// +kubebuilder:scaffold:imports
@@ -61,6 +62,9 @@ var (
 	platformScheme   = runtime.NewScheme()
 	onboardingScheme = runtime.NewScheme()
 	mcpScheme        = runtime.NewScheme()
+{{- if .WithWorkloadCluster }}
+	workloadScheme   = runtime.NewScheme()
+{{- end }}
 	setupLog         = ctrl.Log.WithName("setup")
 )
 
@@ -69,6 +73,9 @@ func init() {
 	initPlatformScheme()
 	initOnboardingScheme()
 	initMcpScheme()
+{{- if .WithWorkloadCluster }}
+	initWorkloadScheme()
+{{- end }}
 }
 
 func initPlatformScheme() {
@@ -89,6 +96,12 @@ func initMcpScheme() {
 	utilruntime.Must(clientgoscheme.AddToScheme(mcpScheme))
 	utilruntime.Must(apiextensionv1.AddToScheme(mcpScheme))
 }
+
+{{- if .WithWorkloadCluster }}
+func initWorkloadScheme() {
+	utilruntime.Must(clientgoscheme.AddToScheme(workloadScheme))
+}
+{{- end }}
 
 // nolint:gocyclo
 func main() {
@@ -211,6 +224,11 @@ func main() {
 		setupLog.Error(err, "Failed to initialize platform cluster")
 		os.Exit(1)
 	}
+	podNamespace := os.Getenv(openmcpconst.EnvVariablePodNamespace)
+	if podNamespace == "" {
+		setupLog.Error(fmt.Errorf("environment variable %s not set - cannot determine source namespace for secrets", openmcpconst.EnvVariablePodNamespace), "pod namespace missing")
+		os.Exit(1)
+	}
 	// TODO: define minimum set of permission required to run the init and run part of your service provider
 	adminPermissions := []clustersv1alpha1.PermissionsRequest{
 		{
@@ -296,27 +314,48 @@ func main() {
 		os.Exit(1)
 	}
 	providerConfigUpdates := make(chan event.GenericEvent)
-	if err := (&controller.{{.Kind}}Reconciler{
-		OnboardingCluster: onboardingCluster,
-		PlatformCluster:   platformCluster,
-		ClusterAccessReconciler: clusteraccess.NewClusterAccessReconciler(platformCluster.Client(), "{{.KindLower}}").
+	spr := spruntime.NewSPReconciler[*{{.KindLower}}sv1alpha1.{{.Kind}}, *{{.KindLower}}sv1alpha1.ProviderConfig](
+		func() *{{.KindLower}}sv1alpha1.{{.Kind}} { return &{{.KindLower}}sv1alpha1.{{.Kind}}{} },
+	).
+		WithPlatformCluster(platformCluster).
+		WithOnboardingCluster(onboardingCluster).
+		WithServiceProviderReconciler(&controller.{{.Kind}}Reconciler{
+			OnboardingCluster: onboardingCluster,
+			PlatformCluster:   platformCluster,
+			PodNamespace:      podNamespace,
+		}).
+		WithClusterAccessReconciler(clusteraccess.NewClusterAccessReconciler(platformCluster.Client(), "{{.Kind}}").
 			WithMCPScheme(mcpScheme).
+			{{- if .WithWorkloadCluster }}
+			WithWorkloadScheme(workloadScheme).
+			{{- end }}
 			WithRetryInterval(10 * time.Second).
 			WithMCPPermissions(adminPermissions).WithMCPRoleRefs([]common.RoleRef{
 			{
 				Name: "cluster-admin",
 				Kind: "ClusterRole",
+			}}).
+			{{- if .WithWorkloadCluster }}
+			WithWorkloadPermissions(adminPermissions).WithWorkloadRoleRefs([]common.RoleRef{
+			{
+				Name: "cluster-admin",
+				Kind: "ClusterRole",
 			},
-		}).SkipWorkloadCluster(),
-	}).SetupWithManager(mgr, providerConfigUpdates); err != nil {
+		}))
+			{{- else }}
+			SkipWorkloadCluster(),
+		)
+			{{- end }}
+	if err := spr.SetupWithManager(mgr, "{{.KindLower}}", providerConfigUpdates); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "{{.Kind}}")
 		os.Exit(1)
 	}
-	if err := (&controller.ProviderConfigReconciler{
-		PlatformCluster:       platformCluster,
-		OnboardingCluster:     onboardingCluster,
-		ProviderUpdateChannel: providerConfigUpdates,
-	}).SetupWithManager(mgr); err != nil {
+	pcr := spruntime.NewPCReconciler(providerName, func() *{{.KindLower}}sv1alpha1.ProviderConfig {
+		return &{{.KindLower}}sv1alpha1.ProviderConfig{}
+	}).
+		WithPlatformCluster(platformCluster).
+		WithUpdateChannel(providerConfigUpdates)
+	if err := pcr.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ProviderConfig")
 		os.Exit(1)
 	}
