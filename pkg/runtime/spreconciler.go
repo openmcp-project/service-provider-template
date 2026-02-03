@@ -186,7 +186,7 @@ func (r *SPReconciler[T, PC]) delete(ctx context.Context, obj T, pc PC) (ctrl.Re
 	req := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(obj)}
 	accessRequestsInDeletion, err := r.areAccessRequestsInDeletion(ctx, req)
 	if err != nil {
-		l.Error(err, "failed to check access requests for landscaper instance")
+		l.Error(err, "failed to check access requests in deletion")
 		return reconcile.Result{}, err
 	}
 	if !accessRequestsInDeletion {
@@ -273,19 +273,26 @@ func (r *SPReconciler[T, PC]) areAccessRequestsInDeletion(ctx context.Context, r
 func (r *SPReconciler[T, PC]) clusters(ctx context.Context, req ctrl.Request) (ClusterContext, ctrl.Result, error) {
 	l := logf.FromContext(ctx)
 	clusters := ClusterContext{}
-	mcp, res, err := r.mcp(ctx, req)
+	res, err := r.clusterAccessReconciler.Reconcile(ctx, req)
 	if err != nil {
-		return clusters, res, err
+		return clusters, ctrl.Result{}, err
 	}
-	if mcp == nil {
+	if res.RequeueAfter > 0 {
+		return clusters, res, nil
+	}
+	mcpCluster, err := r.clusterAccessReconciler.MCPCluster(ctx, req)
+	if err != nil {
+		return clusters, ctrl.Result{}, err
+	}
+	if mcpCluster == nil {
 		return clusters, res, errors.New("mcp access missing")
 	}
-	clusters.MCPCluster = mcp
+	clusters.MCPCluster = mcpCluster
 	if r.withWorkloadCluster {
-		workloadCluster, res, err := r.workloadCluster(ctx, req)
+		workloadCluster, err := r.clusterAccessReconciler.WorkloadCluster(ctx, req)
 		if err != nil {
 			l.Error(err, "workload cluster access error")
-			return clusters, res, err
+			return clusters, ctrl.Result{}, err
 		}
 		if workloadCluster == nil {
 			return clusters, res, errors.New("workload cluster access missing")
@@ -293,36 +300,6 @@ func (r *SPReconciler[T, PC]) clusters(ctx context.Context, req ctrl.Request) (C
 		clusters.WorkloadCluster = workloadCluster
 	}
 	return clusters, res, nil
-}
-
-func (r *SPReconciler[T, PC]) mcp(ctx context.Context, req ctrl.Request) (*clusters.Cluster, ctrl.Result, error) {
-	res, err := r.clusterAccessReconciler.Reconcile(ctx, req)
-	if err != nil {
-		return nil, ctrl.Result{}, err
-	}
-	if res.RequeueAfter > 0 {
-		return nil, res, nil
-	}
-	mcpCluster, err := r.clusterAccessReconciler.MCPCluster(ctx, req)
-	if err != nil {
-		return nil, ctrl.Result{}, err
-	}
-	return mcpCluster, ctrl.Result{}, nil
-}
-
-func (r *SPReconciler[T, PC]) workloadCluster(ctx context.Context, req ctrl.Request) (*clusters.Cluster, ctrl.Result, error) {
-	res, err := r.clusterAccessReconciler.Reconcile(ctx, req)
-	if err != nil {
-		return nil, ctrl.Result{}, err
-	}
-	if res.RequeueAfter > 0 {
-		return nil, res, nil
-	}
-	workloadCluster, err := r.clusterAccessReconciler.WorkloadCluster(ctx, req)
-	if err != nil {
-		return nil, ctrl.Result{}, err
-	}
-	return workloadCluster, ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
