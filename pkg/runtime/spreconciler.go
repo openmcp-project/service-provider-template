@@ -250,7 +250,7 @@ func (r *SPReconciler[T, PC]) createOrUpdate(ctx context.Context, obj T, pc PC) 
 // It is used to prevent renewing cluster access when deleting an ServiceProviderAPI object.
 func (r *SPReconciler[T, PC]) areAccessRequestsInDeletion(ctx context.Context, req ctrl.Request) (bool, error) {
 	accessRequest, err := r.clusterAccessReconciler.MCPAccessRequest(ctx, req)
-	if apierrors.IsNotFound(err) || accessRequest.DeletionTimestamp != nil {
+	if apierrors.IsNotFound(err) || (accessRequest != nil && accessRequest.DeletionTimestamp != nil) {
 		return true, nil
 	}
 	if err != nil {
@@ -258,7 +258,7 @@ func (r *SPReconciler[T, PC]) areAccessRequestsInDeletion(ctx context.Context, r
 	}
 	if r.withWorkloadCluster {
 		accessRequest, err = r.clusterAccessReconciler.WorkloadAccessRequest(ctx, req)
-		if apierrors.IsNotFound(err) || accessRequest.DeletionTimestamp != nil {
+		if apierrors.IsNotFound(err) || (accessRequest != nil && accessRequest.DeletionTimestamp != nil) {
 			return true, nil
 		}
 		if err != nil {
