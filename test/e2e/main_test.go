@@ -33,8 +33,9 @@ func TestMain(m *testing.M) {
 		},
 		ServiceProviders: []providers.ServiceProviderSetup{
 			{
-				Name:  "foo",
-				Image: "controller:latest",
+				Name:               "foo",
+				Image:              "controller:latest",
+				LoadImageToCluster: true,
 			},
 		},
 	}

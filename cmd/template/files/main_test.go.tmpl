@@ -34,8 +34,9 @@ func TestMain(m *testing.M) {
 		},
 		ServiceProviders: []providers.ServiceProviderSetup{
 			{
-				Name:  "{{.KindLower}}",
-				Image: "ghcr.io/openmcp-project/images/{{.RepoName}}:0.0.1",
+				Name:               "{{.KindLower}}",
+				Image:              "ghcr.io/openmcp-project/images/{{.RepoName}}:0.0.1",
+				LoadImageToCluster: true,
 			},
 		},
 	}
