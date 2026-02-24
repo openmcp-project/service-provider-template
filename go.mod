@@ -4,8 +4,11 @@ go 1.25.4
 
 require (
 	github.com/openmcp-project/controller-utils v0.23.4
+	github.com/openmcp-project/openmcp-operator/api v0.17.1
 	github.com/openmcp-project/openmcp-operator/lib v0.17.0
+	github.com/stretchr/testify v1.11.1
 	k8s.io/apimachinery v0.35.0
+	k8s.io/client-go v0.35.0
 	sigs.k8s.io/controller-runtime v0.22.4
 )
 
@@ -27,12 +30,11 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/moby/spdystream v0.5.0 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/openmcp-project/openmcp-operator/api v0.17.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/vladimirvivien/gexe v0.5.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/api v0.35.0 // indirect
-	k8s.io/client-go v0.35.0 // indirect
 	sigs.k8s.io/kind v0.31.0 // indirect
 )
 

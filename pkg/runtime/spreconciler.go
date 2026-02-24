@@ -127,6 +127,12 @@ func (r *SPReconciler[T, PC]) WithWorkloadCluster(b bool) *SPReconciler[T, PC] {
 	return r
 }
 
+// WithProviderConfig sets if the service provider config.
+func (r *SPReconciler[T, PC]) WithProviderConfig(config PC) *SPReconciler[T, PC] {
+	r.providerConfig.Store(&config)
+	return r
+}
+
 // Reconcile orchestrates platform and DomainServiceReconciler logic to reconcile APIObjects
 func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := logf.FromContext(ctx)
