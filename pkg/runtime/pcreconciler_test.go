@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -21,10 +20,11 @@ func TestPCReconciler_Reconcile(t *testing.T) {
 		providerConfig ProviderConfig
 		req            ctrl.Request
 		want           ctrl.Result
+		wantObject     bool
 		wantErr        bool
 	}{
 		{
-			name: "test notify on standard provider config",
+			name: "test notify with provider config",
 			providerConfig: &fakeProviderConfigImpl{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test",
@@ -35,8 +35,9 @@ func TestPCReconciler_Reconcile(t *testing.T) {
 					Name: "test",
 				},
 			},
-			want:    ctrl.Result{},
-			wantErr: false,
+			want:       ctrl.Result{},
+			wantObject: true,
+			wantErr:    false,
 		},
 		{
 			name: "test notify on provider config marked for deletion",
@@ -54,8 +55,9 @@ func TestPCReconciler_Reconcile(t *testing.T) {
 					Name: "test",
 				},
 			},
-			want:    ctrl.Result{},
-			wantErr: false,
+			want:       ctrl.Result{},
+			wantObject: false,
+			wantErr:    false,
 		},
 		{
 			name: "test notify on provider config not found",
@@ -69,8 +71,9 @@ func TestPCReconciler_Reconcile(t *testing.T) {
 					Name: "notfound",
 				},
 			},
-			want:    ctrl.Result{},
-			wantErr: false,
+			want:       ctrl.Result{},
+			wantObject: false,
+			wantErr:    false,
 		},
 	}
 	for _, tt := range tests {
@@ -81,8 +84,6 @@ func TestPCReconciler_Reconcile(t *testing.T) {
 				WithPlatformCluster(createFakeCluster(t, "platform", tt.providerConfig)).
 				WithUpdateChannel(make(chan event.GenericEvent, 1))
 			got, gotErr := r.Reconcile(context.Background(), tt.req)
-			pcUpdate := <-r.providerUpdateChannel
-			fmt.Println(pcUpdate)
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("Reconcile() failed: %v", gotErr)
@@ -93,6 +94,8 @@ func TestPCReconciler_Reconcile(t *testing.T) {
 				t.Fatal("Reconcile() succeeded unexpectedly")
 			}
 			assert.Equal(t, tt.want, got)
+			pcUpdate := <-r.providerUpdateChannel
+			assert.Equal(t, tt.wantObject, pcUpdate.Object != nil)
 		})
 	}
 }

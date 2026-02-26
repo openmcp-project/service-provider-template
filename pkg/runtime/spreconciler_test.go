@@ -16,7 +16,6 @@ import (
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	"github.com/openmcp-project/openmcp-operator/api/common"
-	clusteraccess "github.com/openmcp-project/openmcp-operator/lib/clusteraccess"
 	"github.com/stretchr/testify/assert"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -160,7 +159,7 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 	}
 }
 
-var _ clusteraccess.Reconciler = FakeClusterAccessReconciler{}
+var _ ClusterAccessProvider = FakeClusterAccessReconciler{}
 var fakeSPR ServiceProviderReconciler[*fakeApiImpl, *fakeProviderConfigImpl] = FakeServiceProviderReconciler{}
 
 type FakeServiceProviderReconciler struct {
@@ -183,72 +182,32 @@ type FakeClusterAccessReconciler struct {
 	WorkloadAR            *clustersv1alpha1.AccessRequest
 }
 
-// MCPAccessRequest implements [clusteraccess.Reconciler].
+// MCPAccessRequest implements [ClusterAccessProvider].
 func (f FakeClusterAccessReconciler) MCPAccessRequest(ctx context.Context, request reconcile.Request) (*clustersv1alpha1.AccessRequest, error) {
 	return f.ManagedControlPlaneAR, nil
 }
 
-// MCPCluster implements [clusteraccess.Reconciler].
+// MCPCluster implements [ClusterAccessProvider].
 func (f FakeClusterAccessReconciler) MCPCluster(ctx context.Context, request reconcile.Request) (*clusters.Cluster, error) {
 	return f.ManagedControlPlane, nil
 }
 
-// Reconcile implements [clusteraccess.Reconciler].
+// Reconcile implements [ClusterAccessProvider].
 func (f FakeClusterAccessReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	return reconcile.Result{}, nil
 }
 
-// ReconcileDelete implements [clusteraccess.Reconciler].
+// ReconcileDelete implements [ClusterAccessProvider].
 func (f FakeClusterAccessReconciler) ReconcileDelete(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	return reconcile.Result{}, nil
 }
 
-// SkipWorkloadCluster implements [clusteraccess.Reconciler].
-func (f FakeClusterAccessReconciler) SkipWorkloadCluster() clusteraccess.Reconciler {
-	panic("unimplemented")
-}
-
-// WithMCPPermissions implements [clusteraccess.Reconciler].
-func (f FakeClusterAccessReconciler) WithMCPPermissions(permissions []clustersv1alpha1.PermissionsRequest) clusteraccess.Reconciler {
-	panic("unimplemented")
-}
-
-// WithMCPRoleRefs implements [clusteraccess.Reconciler].
-func (f FakeClusterAccessReconciler) WithMCPRoleRefs(roleRefs []common.RoleRef) clusteraccess.Reconciler {
-	panic("unimplemented")
-}
-
-// WithMCPScheme implements [clusteraccess.Reconciler].
-func (f FakeClusterAccessReconciler) WithMCPScheme(scheme *runtime.Scheme) clusteraccess.Reconciler {
-	panic("unimplemented")
-}
-
-// WithRetryInterval implements [clusteraccess.Reconciler].
-func (f FakeClusterAccessReconciler) WithRetryInterval(interval time.Duration) clusteraccess.Reconciler {
-	panic("unimplemented")
-}
-
-// WithWorkloadPermissions implements [clusteraccess.Reconciler].
-func (f FakeClusterAccessReconciler) WithWorkloadPermissions(permissions []clustersv1alpha1.PermissionsRequest) clusteraccess.Reconciler {
-	panic("unimplemented")
-}
-
-// WithWorkloadRoleRefs implements [clusteraccess.Reconciler].
-func (f FakeClusterAccessReconciler) WithWorkloadRoleRefs(roleRefs []common.RoleRef) clusteraccess.Reconciler {
-	panic("unimplemented")
-}
-
-// WithWorkloadScheme implements [clusteraccess.Reconciler].
-func (f FakeClusterAccessReconciler) WithWorkloadScheme(scheme *runtime.Scheme) clusteraccess.Reconciler {
-	panic("unimplemented")
-}
-
-// WorkloadAccessRequest implements [clusteraccess.Reconciler].
+// WorkloadAccessRequest implements [ClusterAccessProvider].
 func (f FakeClusterAccessReconciler) WorkloadAccessRequest(ctx context.Context, request reconcile.Request) (*clustersv1alpha1.AccessRequest, error) {
 	return f.WorkloadAR, nil
 }
 
-// WorkloadCluster implements [clusteraccess.Reconciler].
+// WorkloadCluster implements [ClusterAccessProvider].
 func (f FakeClusterAccessReconciler) WorkloadCluster(ctx context.Context, request reconcile.Request) (*clusters.Cluster, error) {
 	return f.Workload, nil
 }
