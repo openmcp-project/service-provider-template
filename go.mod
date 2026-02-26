@@ -5,7 +5,6 @@ go 1.25.4
 require (
 	github.com/openmcp-project/controller-utils v0.23.4
 	github.com/openmcp-project/openmcp-operator/api v0.17.1
-	github.com/openmcp-project/openmcp-operator/lib v0.17.0
 	github.com/stretchr/testify v1.11.1
 	k8s.io/apimachinery v0.35.0
 	k8s.io/client-go v0.35.0
@@ -77,7 +76,6 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect

@@ -120,8 +120,6 @@ github.com/openmcp-project/controller-utils v0.23.4 h1:GUPa0tP0kccp5/DheQR9vWfPC
 github.com/openmcp-project/controller-utils v0.23.4/go.mod h1:zGsvEJ7P+BjRnDQMVreCOp4Lsx5xpFQ36gm2fcVw34w=
 github.com/openmcp-project/openmcp-operator/api v0.17.1 h1:ZJQWWUHtN7ml98IbSuaHiLfkG/my6LNehsLN62qxE80=
 github.com/openmcp-project/openmcp-operator/api v0.17.1/go.mod h1:4khFA0fuEVDcwptyDkHcH/7BGuMVhouUTUoiu61wqZQ=
-github.com/openmcp-project/openmcp-operator/lib v0.17.0 h1:42yGu/1LoEd51/noWgr7Bmz33rfHjTm/HKKXlJjHif4=
-github.com/openmcp-project/openmcp-operator/lib v0.17.0/go.mod h1:ZUXmfwL8fPe0iTsx+PB5zHWPZavXTkLOYOj2qF1N6hY=
 github.com/openmcp-project/openmcp-testing v0.2.0 h1:NU81m0tOJj3G7rWkz8bYioxfMuiNPHIEW/dLV/NQBQk=
 github.com/openmcp-project/openmcp-testing v0.2.0/go.mod h1:tv1+ejmvpkuAL03XK8AXDOh2hyBw0Xme84yIkRhLJxg=
 github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
@@ -176,8 +174,6 @@ go.yaml.in/yaml/v3 v3.0.4/go.mod h1:DhzuOOF2ATzADvBadXxruRBLzYTpT36CKvDb3+aBEFg=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
-golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 h1:mgKeJMpvi0yx/sU5GsxQ7p6s2wtOnGAHZWCHUM4KGzY=
-golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546/go.mod h1:j/pmGrbnkbPtQfxEe5D0VQhZC6qKbfKifgD0oM7sR70=
 golang.org/x/mod v0.2.0/go.mod h1:s0Qsj1ACt9ePp/hMypM3fl4fZqREWJwdYDEqhRiZZUA=
 golang.org/x/mod v0.3.0/go.mod h1:s0Qsj1ACt9ePp/hMypM3fl4fZqREWJwdYDEqhRiZZUA=
 golang.org/x/mod v0.29.0 h1:HV8lRxZC4l2cr3Zq1LvtOsi/ThTgWnUk/y64QSs8GwA=
