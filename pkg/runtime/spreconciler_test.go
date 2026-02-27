@@ -192,11 +192,11 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 				assert.Equal(t, client.ObjectKeyFromObject(tt.apiObj), client.ObjectKeyFromObject(mockSPR.apiObj))
 				assert.Equal(t, client.ObjectKeyFromObject(tt.providerConfig), client.ObjectKeyFromObject(mockSPR.pcObj))
 				assert.Equal(t, client.ObjectKey{
-					Namespace: testNamespaceName,
+					Namespace: tt.req.Namespace,
 					Name:      testMCPKubeconfig,
 				}, mockSPR.contextObj.MCPAccessSecretKey)
 				assert.Equal(t, client.ObjectKey{
-					Namespace: testNamespaceName,
+					Namespace: tt.req.Namespace,
 					Name:      testWorkloadKubeconfig,
 				}, mockSPR.contextObj.WorkloadAccessSecretKey)
 			}
