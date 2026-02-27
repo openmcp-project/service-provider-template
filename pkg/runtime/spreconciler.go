@@ -12,7 +12,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -41,11 +40,11 @@ type ClusterContext struct {
 	// MCPCluster is the managed control plane that belongs to the current reconcile request
 	MCPCluster *clusters.Cluster
 	// MCPAccessSecretKey provides the object key to retrieve the MCP kubeconfig secret
-	MCPAccessSecretKey *types.NamespacedName
+	MCPAccessSecretKey client.ObjectKey
 	// WorkloadCluster is the workload cluster that belongs the current reconcile request
 	WorkloadCluster *clusters.Cluster
 	// WorkloadAccessSecretKey provides the object key to retrieve the workload cluster kubeconfig secret
-	WorkloadAccessSecretKey *types.NamespacedName
+	WorkloadAccessSecretKey client.ObjectKey
 }
 
 // ServiceProviderAPI represents the end-user facing onboarding api type
@@ -391,11 +390,11 @@ func (r *SPReconciler[T, PC]) SetupWithManager(mgr ctrl.Manager, name string, pr
 		Complete(r)
 }
 
-func retrieveSecretKey(ar *clustersv1alpha1.AccessRequest) *types.NamespacedName {
+func retrieveSecretKey(ar *clustersv1alpha1.AccessRequest) client.ObjectKey {
 	if ar.Status.SecretRef == nil {
-		return nil
+		return client.ObjectKey{}
 	}
-	return &types.NamespacedName{
+	return client.ObjectKey{
 		Namespace: ar.Namespace,
 		Name:      ar.Status.SecretRef.Name,
 	}
