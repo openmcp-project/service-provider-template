@@ -319,6 +319,9 @@ func main() {
 	).
 		WithPlatformCluster(platformCluster).
 		WithOnboardingCluster(onboardingCluster).
+		{{- if .WithSecretWatcher }}
+		WithSecretNamespace(podNamespace).
+		{{- end }}
 		WithServiceProviderReconciler(&controller.{{.Kind}}Reconciler{
 			OnboardingCluster: onboardingCluster,
 			PlatformCluster:   platformCluster,

@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
+	controllerutil2 "github.com/openmcp-project/controller-utils/pkg/controller"
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
@@ -28,6 +31,19 @@ type ServiceProviderReconciler[T ServiceProviderAPI, PC ProviderConfig] interfac
 	CreateOrUpdate(ctx context.Context, obj T, pc PC, clusters ClusterContext) (ctrl.Result, error)
 	// Delete is called on every delete event
 	Delete(ctx context.Context, obj T, pc PC, clusters ClusterContext) (ctrl.Result, error)
+}
+
+// SecretWatcher can optionally be implemented by a ServiceProviderReconciler
+// to trigger reconciliation of all ServiceProviderAPI objects when a
+// referenced secret in the provider namespace changes.
+// The watch is set up on the platform cluster and filtered to the namespace
+// configured via WithSecretNamespace.
+type SecretWatcher[PC ProviderConfig] interface {
+	// IsReferencedSecret returns true if the given secret should trigger
+	// reconciliation. pc is the current provider config — it will be the
+	// zero value (nil for pointer types) if not yet loaded; implementations
+	// must guard against this.
+	IsReferencedSecret(ctx context.Context, secret *corev1.Secret, pc PC) bool
 }
 
 // ClusterContext provides access to request-scoped clusters.
@@ -120,6 +136,8 @@ type SPReconciler[T ServiceProviderAPI, PC ProviderConfig] struct {
 	providerConfig atomic.Pointer[PC]
 	// withWorkloadCluster defines whether a service provider requires access to a workload cluster
 	withWorkloadCluster bool
+	// secretNamespace is the namespace to watch secrets in on the platform cluster. Used only if the ServiceProviderReconciler also implements SecretWatcher.
+	secretNamespace string
 	// emptyObj creates an empty object of the api type
 	emptyObj func() T
 }
@@ -158,6 +176,12 @@ func (r *SPReconciler[T, PC]) WithServiceProviderReconciler(dsr ServiceProviderR
 // WithWorkloadCluster sets if the service provider reconciler requests a workload cluster
 func (r *SPReconciler[T, PC]) WithWorkloadCluster(b bool) *SPReconciler[T, PC] {
 	r.withWorkloadCluster = b
+	return r
+}
+
+// WithSecretNamespace enables secret watching in the given namespace on the platform cluster. Only used if the ServiceProviderReconciler also implements SecretWatcher.
+func (r *SPReconciler[T, PC]) WithSecretNamespace(ns string) *SPReconciler[T, PC] {
+	r.secretNamespace = ns
 	return r
 }
 
@@ -354,7 +378,7 @@ func (r *SPReconciler[T, PC]) clusters(ctx context.Context, req ctrl.Request) (C
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *SPReconciler[T, PC]) SetupWithManager(mgr ctrl.Manager, name string, providerConfigUpdates chan event.GenericEvent) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	controller := ctrl.NewControllerManagedBy(mgr).
 		For(r.emptyObj()).
 		// sets up reconciles whenever provider config controller sends update events
 		WatchesRawSource(
@@ -370,24 +394,61 @@ func (r *SPReconciler[T, PC]) SetupWithManager(mgr ctrl.Manager, name string, pr
 							r.providerConfig.Store(nil)
 						}
 						// reconcile all existing objects
-						var list unstructured.UnstructuredList
-						gvk := r.emptyObj().GetObjectKind().GroupVersionKind()
-						list.SetGroupVersionKind(gvk)
-						if err := r.onboardingCluster.Client().List(ctx, &list); err != nil {
-							return nil
-						}
-						reqs := make([]reconcile.Request, len(list.Items))
-						for i := range list.Items {
-							reqs[i] = reconcile.Request{
-								NamespacedName: client.ObjectKeyFromObject(&list.Items[i]),
-							}
-						}
-						return reqs
+						return r.enqueueAllObjects(ctx)
 					},
 				)),
-		).
-		Named(name).
-		Complete(r)
+		)
+
+	// Optional: watch secrets on the platform cluster if the reconciler implements SecretWatcher
+	if sw, ok := r.serviceProviderReconciler.(SecretWatcher[PC]); ok && r.secretNamespace != "" {
+		controller = controller.WatchesRawSource(
+			source.Kind(
+				r.platformCluster.Cluster().GetCache(),
+				&corev1.Secret{},
+				handler.TypedEnqueueRequestsFromMapFunc(r.mapSecretToRequests(sw)),
+				controllerutil2.ToTypedPredicate[*corev1.Secret](
+					predicate.NewPredicateFuncs(func(obj client.Object) bool {
+						return obj.GetNamespace() == r.secretNamespace
+					}),
+				),
+			),
+		)
+	}
+
+	return controller.Named(name).Complete(r)
+}
+
+// mapSecretToRequests returns a typed map function that checks whether a changed secret
+// is referenced by the service provider and, if so, enqueues all ServiceProviderAPI objects.
+func (r *SPReconciler[T, PC]) mapSecretToRequests(sw SecretWatcher[PC]) func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
+	return func(ctx context.Context, secret *corev1.Secret) []reconcile.Request {
+		var pcVal PC
+		if pc := r.providerConfig.Load(); pc != nil {
+			pcVal = *pc
+		}
+		if !sw.IsReferencedSecret(ctx, secret, pcVal) {
+			return nil
+		}
+		return r.enqueueAllObjects(ctx)
+	}
+}
+
+// enqueueAllObjects lists all ServiceProviderAPI objects and returns a reconcile request for each.
+func (r *SPReconciler[T, PC]) enqueueAllObjects(ctx context.Context) []reconcile.Request {
+	var list unstructured.UnstructuredList
+	gvk := r.emptyObj().GetObjectKind().GroupVersionKind()
+	list.SetGroupVersionKind(gvk)
+	if err := r.onboardingCluster.Client().List(ctx, &list); err != nil {
+		logf.FromContext(ctx).Error(err, "failed to list objects")
+		return nil
+	}
+	reqs := make([]reconcile.Request, len(list.Items))
+	for i := range list.Items {
+		reqs[i] = reconcile.Request{
+			NamespacedName: client.ObjectKeyFromObject(&list.Items[i]),
+		}
+	}
+	return reqs
 }
 
 func retrieveSecretKey(ar *clustersv1alpha1.AccessRequest) client.ObjectKey {
