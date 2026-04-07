@@ -28,6 +28,7 @@ type TemplateData struct {
 	RepoName            string
 	WithExample         bool
 	WithWorkloadCluster bool
+	WithSecretWatcher   bool
 }
 
 //nolint:gocyclo
@@ -36,6 +37,7 @@ func main() {
 	kind := flag.String("kind", "FooService", "GVK kind")
 	withExample := flag.Bool("v", false, "Generate with sample code")
 	withWorkloadCluster := flag.Bool("w", false, "Reconcile with workload cluster")
+	withSecretWatcher := flag.Bool("s", false, "Generate secret watcher implementation")
 	module := flag.String("module", "github.com/openmcp-project/service-provider-template", "Go module")
 	flag.Parse()
 	data := TemplateData{
@@ -46,6 +48,7 @@ func main() {
 		RepoName:            filepath.Base(*module),
 		WithExample:         *withExample,
 		WithWorkloadCluster: *withWorkloadCluster,
+		WithSecretWatcher:   *withSecretWatcher,
 	}
 	// directories
 	apiDir := filepath.Join("api", "v1alpha1")

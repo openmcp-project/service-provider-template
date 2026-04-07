@@ -26,7 +26,7 @@ jobs:
 
       - name: Generate template
         run: |
-          go run ./cmd/template -v -w
+          go run ./cmd/template -v -w -s
 
       - name: task generate
         run: |

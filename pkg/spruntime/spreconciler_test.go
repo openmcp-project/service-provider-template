@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,6 +23,7 @@ import (
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 const (
@@ -266,16 +269,15 @@ func (f FakeClusterAccessProvider) WorkloadCluster(ctx context.Context, request 
 	return f.Workload, nil
 }
 
+var testGV = schema.GroupVersion{Group: "openmcp.test", Version: "v1"}
+
 func createFakeCluster(t *testing.T, id string, clusterObjects ...client.Object) *clusters.Cluster {
 	t.Helper()
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = apiextv1.AddToScheme(scheme)
 	_ = clustersv1alpha1.AddToScheme(scheme)
-	scheme.AddKnownTypes(schema.GroupVersion{
-		Group:   "openmcp.test",
-		Version: "v1",
-	}, &fakeApiImpl{}, &fakeProviderConfigImpl{})
+	scheme.AddKnownTypes(testGV, &fakeApiImpl{}, &fakeProviderConfigImpl{})
 
 	// init cluster with objects
 	fakeClient := fake.NewClientBuilder().WithObjects(clusterObjects...).WithScheme(scheme).Build()
@@ -325,4 +327,138 @@ func (f *fakeProviderConfigImpl) DeepCopyObject() runtime.Object {
 
 func (f *fakeProviderConfigImpl) PollInterval() time.Duration {
 	return f.FakePollInterval
+}
+
+// MockSecretWatchingReconciler satisfies both ServiceProviderReconciler and SecretWatcher.
+type MockSecretWatchingReconciler struct {
+	MockServiceProviderReconciler
+	referencedSecrets map[string]bool
+}
+
+var _ SecretWatcher[*fakeProviderConfigImpl] = &MockSecretWatchingReconciler{}
+
+func (m *MockSecretWatchingReconciler) IsReferencedSecret(_ context.Context, secret *corev1.Secret, _ *fakeProviderConfigImpl) bool {
+	return m.referencedSecrets[secret.Name]
+}
+
+// createFakeClusterWithUnstructuredList creates a fake cluster whose client supports
+// listing unstructured objects by intercepting List calls and populating the result
+// from the given objects.
+func createFakeClusterWithUnstructuredList(t *testing.T, id string, objs []client.Object) *clusters.Cluster {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	scheme.AddKnownTypes(testGV, &fakeApiImpl{}, &fakeProviderConfigImpl{})
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithInterceptorFuncs(interceptor.Funcs{
+			List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+				if ul, ok := list.(*unstructured.UnstructuredList); ok {
+					for _, obj := range objs {
+						u := unstructured.Unstructured{}
+						u.SetName(obj.GetName())
+						u.SetNamespace(obj.GetNamespace())
+						ul.Items = append(ul.Items, u)
+					}
+					return nil
+				}
+				return c.List(ctx, list, opts...)
+			},
+		}).
+		Build()
+	return clusters.NewTestClusterFromClient(id, fakeClient)
+}
+
+func TestMapSecretToRequests(t *testing.T) {
+	tests := []struct {
+		name           string
+		secret         *corev1.Secret
+		referenced     map[string]bool
+		providerConfig *fakeProviderConfigImpl
+		existingObjs   []client.Object
+		wantRequests   int
+	}{
+		{
+			name: "referenced secret with existing objects triggers reconciliation",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: testNamespaceName},
+			},
+			referenced:     map[string]bool{"my-secret": true},
+			providerConfig: &fakeProviderConfigImpl{FakePollInterval: time.Hour},
+			existingObjs: []client.Object{
+				&fakeApiImpl{ObjectMeta: metav1.ObjectMeta{Name: "obj-1", Namespace: testNamespaceName}},
+				&fakeApiImpl{ObjectMeta: metav1.ObjectMeta{Name: "obj-2", Namespace: testNamespaceName}},
+			},
+			wantRequests: 2,
+		},
+		{
+			name: "unreferenced secret does not trigger reconciliation",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "other-secret", Namespace: testNamespaceName},
+			},
+			referenced:     map[string]bool{"my-secret": true},
+			providerConfig: &fakeProviderConfigImpl{FakePollInterval: time.Hour},
+			existingObjs: []client.Object{
+				&fakeApiImpl{ObjectMeta: metav1.ObjectMeta{Name: "obj-1", Namespace: testNamespaceName}},
+			},
+			wantRequests: 0,
+		},
+		{
+			name: "referenced secret with no existing objects returns empty",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: testNamespaceName},
+			},
+			referenced:     map[string]bool{"my-secret": true},
+			providerConfig: &fakeProviderConfigImpl{FakePollInterval: time.Hour},
+			existingObjs:   nil,
+			wantRequests:   0,
+		},
+		{
+			name: "nil provider config does not panic",
+			secret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: testNamespaceName},
+			},
+			referenced:     map[string]bool{"my-secret": true},
+			providerConfig: nil,
+			existingObjs:   nil,
+			wantRequests:   0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			onboardingCluster := createFakeClusterWithUnstructuredList(t, "onboarding", tt.existingObjs)
+
+			mockSW := &MockSecretWatchingReconciler{
+				referencedSecrets: tt.referenced,
+			}
+
+			r := NewSPReconciler[*fakeApiImpl, *fakeProviderConfigImpl](func() *fakeApiImpl {
+				obj := &fakeApiImpl{}
+				obj.SetGroupVersionKind(testGV.WithKind("fakeApiImpl"))
+				return obj
+			}).
+				WithOnboardingCluster(onboardingCluster).
+				WithServiceProviderReconciler(mockSW)
+
+			if tt.providerConfig != nil {
+				r.WithProviderConfig(tt.providerConfig)
+			}
+
+			mapFn := r.mapSecretToRequests(mockSW)
+			reqs := mapFn(context.Background(), tt.secret)
+			assert.Equal(t, tt.wantRequests, len(reqs))
+
+			if tt.wantRequests > 0 {
+				names := make(map[string]bool)
+				for _, req := range reqs {
+					names[req.Name] = true
+				}
+				for _, obj := range tt.existingObjs {
+					assert.True(t, names[obj.GetName()], "expected request for object %s", obj.GetName())
+				}
+			}
+		})
+	}
 }
