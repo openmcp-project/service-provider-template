@@ -2,7 +2,9 @@ package e2e
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"k8s.io/klog/v2"
@@ -17,6 +19,7 @@ var testenv env.Environment
 
 func TestMain(m *testing.M) {
 	initLogging()
+	version := mustVersion()
 	openmcp := setup.OpenMCPSetup{
 		Namespace: "openmcp-system",
 		Operator: setup.OpenMCPOperatorSetup{
@@ -34,7 +37,7 @@ func TestMain(m *testing.M) {
 		ServiceProviders: []providers.ServiceProviderSetup{
 			{
 				Name:               "foo",
-				Image:              "controller:latest",
+				Image:              fmt.Sprintf("ghcr/openmcp-project/images/service-provider-foo:%s", version),
 				LoadImageToCluster: true,
 			},
 		},
@@ -42,6 +45,14 @@ func TestMain(m *testing.M) {
 	testenv = env.NewWithConfig(envconf.New().WithNamespace(openmcp.Namespace))
 	openmcp.Bootstrap(testenv)
 	os.Exit(testenv.Run(m))
+}
+
+func mustVersion() string {
+	version, err := os.ReadFile("../../VERSION")
+	if err != nil {
+		panic(err)
+	}
+	return strings.TrimSpace(string(version))
 }
 
 func initLogging() {
