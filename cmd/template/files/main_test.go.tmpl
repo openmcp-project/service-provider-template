@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 		ServiceProviders: []providers.ServiceProviderSetup{
 			{
 				Name:               "{{.KindLower}}",
-				Image:              fmt.Sprintf("ghcr/openmcp-project/images/{{.RepoName}}:%s", version),
+				Image:              fmt.Sprintf("ghcr.io/openmcp-project/images/{{.RepoName}}:%s", version),
 				LoadImageToCluster: true,
 			},
 		},
