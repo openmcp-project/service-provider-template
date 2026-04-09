@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -48,7 +49,8 @@ func TestMain(m *testing.M) {
 }
 
 func mustVersion() string {
-	version, err := os.ReadFile("../../VERSION")
+	cmd := exec.Command("../../hack/common/get-version.sh")
+	version, err := cmd.Output()
 	if err != nil {
 		panic(err)
 	}
