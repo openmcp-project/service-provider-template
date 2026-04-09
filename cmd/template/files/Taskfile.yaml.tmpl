@@ -7,7 +7,7 @@ vars:
   CODE_DIRS: '{{"{{"}}.ROOT_DIR{{"}}"}}/cmd/... {{"{{"}}.ROOT_DIR{{"}}"}}/internal/... {{"{{"}}.ROOT_DIR{{"}}"}}/api/v1alpha1/... {{"{{"}}.ROOT_DIR{{"}}"}}/pkg/...'
   COMPONENTS: '{{.RepoName}}'
   REPO_URL: 'https://{{.Module}}'
-  COMMON_SCRIPT_DIR: '{{.ROOT_DIR}}/hack/common'
+  COMMON_SCRIPT_DIR: '{{"{{"}}.ROOT_DIR{{"}}"}}/hack/common'
 
 includes:
   shared:
