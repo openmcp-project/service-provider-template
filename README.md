@@ -4,7 +4,7 @@
 
 ## About this project
 
-A template for building @openmcp-project Service Providers
+A template for building @openmcp-project Service Providers.
 
 ## Requirements and Setup
 
@@ -32,6 +32,8 @@ Running End-to-End tests:
 ```shell
 task test-e2e
 ```
+
+For a detailed guide on setup and usage, please refer to the full [Service Provider Development Guide](https://openmcp-project.github.io/docs/developers/serviceprovider/service-providers).
 
 ## CLI Flags
 
