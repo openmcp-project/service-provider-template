@@ -19,6 +19,12 @@ import (
 // exec from project root
 const templatesDir = "cmd/template/files"
 
+type TemplateExecutionConfig struct {
+	TemplateFile    string
+	DestinationFile string
+	Data            any
+}
+
 type TemplateData struct {
 	Group               string
 	Version             string
@@ -51,6 +57,7 @@ func main() {
 		WithSecretWatcher:   *withSecretWatcher,
 	}
 	// directories
+	workflowsDir := filepath.Join(".github", "workflows")
 	apiDir := filepath.Join("api", "v1alpha1")
 	crdDir := filepath.Join("api", "crds", "manifests")
 	cmdDir := filepath.Join("cmd", data.RepoName)
@@ -64,34 +71,77 @@ func main() {
 		}
 	}
 
-	// files
-	providercrdFile := filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_%ss.yaml", *group, data.KindLower))
-	configcrdFile := filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_providerconfigs.yaml", *group))
-	typesFile := filepath.Join(apiDir, fmt.Sprintf("%s_types.go", data.KindLower))
-	groupVersionFile := filepath.Join(apiDir, "groupversion_info.go")
-	mainFile := filepath.Join(cmdDir, "main.go")
-	mainTestFile := filepath.Join(e2eDir, "main_test.go")
-	taskfileFile := "Taskfile.yaml"
-	controllerFile := filepath.Join(controllerDir, fmt.Sprintf("%s_controller.go", data.KindLower))
-	testFile := filepath.Join(e2eDir, fmt.Sprintf("%s_test.go", data.KindLower))
-	testOnboardingFile := filepath.Join(e2eDir, "onboarding", fmt.Sprintf("%s.yaml", data.KindLower))
-	testPlatformFile := filepath.Join(e2eDir, "platform", "providerconfig.yaml")
-	// api
-	execTemplate("api_crd_serviceproviderapi.yaml.tmpl", providercrdFile, data)
-	execTemplate("api_crd_providerconfig.yaml.tmpl", configcrdFile, data)
-	execTemplate("api_types.go.tmpl", typesFile, data)
-	execTemplate("api_groupversion_info.go.tmpl", groupVersionFile, data)
-	// cmd
-	execTemplate("main.go.tmpl", mainFile, data)
-	// controller
-	execTemplate("controller.go.tmpl", controllerFile, data)
-	// e2e tests
-	execTemplate("main_test.go.tmpl", mainTestFile, data)
-	execTemplate("test.go.tmpl", testFile, data)
-	execTemplate("testdata_providerconfig.yaml.tmpl", testPlatformFile, data)
-	execTemplate("testdata_service.yaml.tmpl", testOnboardingFile, data)
-	// root
-	execTemplate("Taskfile.yaml.tmpl", taskfileFile, data)
+	templateConfigs := []TemplateExecutionConfig{
+		{
+			TemplateFile:    "api_crd_providerconfig.yaml.tmpl",
+			DestinationFile: filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_providerconfigs.yaml", *group)),
+			Data:            data,
+		},
+		{
+			TemplateFile:    "api_crd_serviceproviderapi.yaml.tmpl",
+			DestinationFile: filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_%ss.yaml", *group, data.KindLower)),
+			Data:            data,
+		},
+		{
+			TemplateFile:    "api_groupversion_info.go.tmpl",
+			DestinationFile: filepath.Join(apiDir, "groupversion_info.go"),
+			Data:            data,
+		},
+		{
+			TemplateFile:    "api_types.go.tmpl",
+			DestinationFile: filepath.Join(apiDir, fmt.Sprintf("%s_types.go", data.KindLower)),
+			Data:            data,
+		},
+		{
+			TemplateFile:    "controller.go.tmpl",
+			DestinationFile: filepath.Join(controllerDir, fmt.Sprintf("%s_controller.go", data.KindLower)),
+			Data:            data,
+		},
+		{
+			TemplateFile:    "main_test.go.tmpl",
+			DestinationFile: filepath.Join(e2eDir, "main_test.go"),
+			Data:            data,
+		},
+		{
+			TemplateFile:    "main.go.tmpl",
+			DestinationFile: filepath.Join(cmdDir, "main.go"),
+			Data:            data,
+		},
+		{
+			TemplateFile:    "Taskfile.yaml.tmpl",
+			DestinationFile: "Taskfile.yaml",
+			Data:            data,
+		},
+		{
+			TemplateFile:    "test.go.tmpl",
+			DestinationFile: filepath.Join(e2eDir, fmt.Sprintf("%s_test.go", data.KindLower)),
+			Data:            data,
+		},
+		{
+			TemplateFile:    "testdata_providerconfig.yaml.tmpl",
+			DestinationFile: filepath.Join(e2eDir, "platform", "providerconfig.yaml"),
+			Data:            data,
+		},
+		{
+			TemplateFile:    "testdata_service.yaml.tmpl",
+			DestinationFile: filepath.Join(e2eDir, "onboarding", fmt.Sprintf("%s.yaml", data.KindLower)),
+			Data:            data,
+		},
+		{
+			TemplateFile:    "workflow_publish.yaml.tmpl",
+			DestinationFile: filepath.Join(workflowsDir, "publish.yaml"),
+			Data:            nil,
+		},
+		{
+			TemplateFile:    "workflow_release.yaml.tmpl",
+			DestinationFile: filepath.Join(workflowsDir, "release.yaml"),
+			Data:            nil,
+		},
+	}
+
+	for _, cfg := range templateConfigs {
+		execTemplate(cfg)
+	}
 
 	// rename module
 	if err := exec.Command("go", "mod", "edit", "-module", *module).Run(); err != nil {
@@ -132,20 +182,20 @@ func main() {
 }
 
 //nolint:gocritic
-func execTemplate(templateName, outPath string, data TemplateData) {
-	tplPath := filepath.Join(templatesDir, templateName)
+func execTemplate(cfg TemplateExecutionConfig) {
+	tplPath := filepath.Join(templatesDir, cfg.TemplateFile)
 	tpl, err := template.ParseFiles(tplPath)
 	if err != nil {
-		log.Fatalf("failed parsing template %s: %v", templateName, err)
+		log.Fatalf("failed parsing template %s: %v", cfg.TemplateFile, err)
 	}
-	f, err := os.Create(outPath)
+	f, err := os.Create(cfg.DestinationFile)
 	if err != nil {
-		log.Fatalf("failed creating file %s: %v", outPath, err)
+		log.Fatalf("failed creating file %s: %v", cfg.DestinationFile, err)
 	}
-	log.Default().Println(outPath)
-	defer closeFile(outPath, f)
-	if err := tpl.Execute(f, data); err != nil {
-		log.Fatalf("failed executing template %s: %v", templateName, err)
+	log.Default().Println(cfg.DestinationFile)
+	defer closeFile(cfg.DestinationFile, f)
+	if err := tpl.Execute(f, cfg.Data); err != nil {
+		log.Fatalf("failed executing template %s: %v", cfg.TemplateFile, err)
 	}
 }
 
