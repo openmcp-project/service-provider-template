@@ -43,7 +43,7 @@ The template generator (`cmd/template`) supports the following flags:
 
 - `-module`: Go module path (default: `github.com/openmcp-project/service-provider-template`)
 - `-kind`: GVK kind name (default: `FooService`)
-- `-group`: GVK group prefix, will be suffixed with `services.openmcp.cloud` (default: `foo`)
+- `-group`: GVK group prefix, will be suffixed with `services.open-control-plane.io` (default: `foo`)
 - `-v`: Generate with sample code (default: `false`)
 - `-w`: Generate a service provider that reconciles its `DomainServiceAPI` on the [WorkloadCluster](https://openmcp-project.github.io/docs/about/design/service-provider#deployment-model) (default: `false`)
 - `-s`: Generate secret watcher implementation (default: `false`)
