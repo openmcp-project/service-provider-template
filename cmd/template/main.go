@@ -27,6 +27,7 @@ type TemplateExecutionConfig struct {
 
 type TemplateData struct {
 	Group               string
+	GroupSuffix         string
 	Version             string
 	Kind                string
 	KindLower           string
@@ -37,9 +38,11 @@ type TemplateData struct {
 	WithSecretWatcher   bool
 }
 
+const groupSuffix = "services.open-control-plane.io"
+
 //nolint:gocyclo
 func main() {
-	group := flag.String("group", "foo", "GVK group prefix (will always be suffixed with services.openmcp.cloud)")
+	group := flag.String("group", "foo", fmt.Sprintf("GVK group prefix (will always be suffixed with %s", groupSuffix))
 	kind := flag.String("kind", "FooService", "GVK kind")
 	withExample := flag.Bool("v", false, "Generate with sample code")
 	withWorkloadCluster := flag.Bool("w", false, "Reconcile with workload cluster")
@@ -48,6 +51,7 @@ func main() {
 	flag.Parse()
 	data := TemplateData{
 		Group:               *group,
+		GroupSuffix:         groupSuffix,
 		Kind:                *kind,
 		KindLower:           strings.ToLower(*kind),
 		Module:              *module,
@@ -74,12 +78,12 @@ func main() {
 	templateConfigs := []TemplateExecutionConfig{
 		{
 			TemplateFile:    "api_crd_providerconfig.yaml.tmpl",
-			DestinationFile: filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_providerconfigs.yaml", *group)),
+			DestinationFile: filepath.Join(crdDir, fmt.Sprintf("%s.%s_providerconfigs.yaml", *group, groupSuffix)),
 			Data:            data,
 		},
 		{
 			TemplateFile:    "api_crd_serviceproviderapi.yaml.tmpl",
-			DestinationFile: filepath.Join(crdDir, fmt.Sprintf("%s.services.openmcp.cloud_%ss.yaml", *group, data.KindLower)),
+			DestinationFile: filepath.Join(crdDir, fmt.Sprintf("%s.%s_%ss.yaml", *group, groupSuffix, data.KindLower)),
 			Data:            data,
 		},
 		{
