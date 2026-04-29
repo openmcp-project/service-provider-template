@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -436,7 +437,10 @@ func (r *SPReconciler[T, PC]) mapSecretToRequests(sw SecretWatcher[PC]) func(ctx
 // enqueueAllObjects lists all ServiceProviderAPI objects and returns a reconcile request for each.
 func (r *SPReconciler[T, PC]) enqueueAllObjects(ctx context.Context) []reconcile.Request {
 	var list unstructured.UnstructuredList
-	gvk := r.emptyObj().GetObjectKind().GroupVersionKind()
+	gvk, err := apiutil.GVKForObject(r.emptyObj(), r.onboardingCluster.Scheme())
+	if err != nil {
+		logf.FromContext(ctx).Error(err, "failed to retrieve gvk")
+	}
 	list.SetGroupVersionKind(gvk)
 	if err := r.onboardingCluster.Client().List(ctx, &list); err != nil {
 		logf.FromContext(ctx).Error(err, "failed to list objects")
