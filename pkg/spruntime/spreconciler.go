@@ -440,6 +440,7 @@ func (r *SPReconciler[T, PC]) enqueueAllObjects(ctx context.Context) []reconcile
 	gvk, err := apiutil.GVKForObject(r.emptyObj(), r.onboardingCluster.Scheme())
 	if err != nil {
 		logf.FromContext(ctx).Error(err, "failed to retrieve gvk")
+		return nil
 	}
 	list.SetGroupVersionKind(gvk)
 	if err := r.onboardingCluster.Client().List(ctx, &list); err != nil {

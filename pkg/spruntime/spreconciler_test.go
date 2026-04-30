@@ -5,6 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -15,10 +19,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/go-logr/zapr"
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	"github.com/openmcp-project/openmcp-operator/api/common"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -436,7 +442,6 @@ func TestMapSecretToRequests(t *testing.T) {
 
 			r := NewSPReconciler[*fakeApiImpl, *fakeProviderConfigImpl](func() *fakeApiImpl {
 				obj := &fakeApiImpl{}
-				obj.SetGroupVersionKind(testGV.WithKind("fakeApiImpl"))
 				return obj
 			}).
 				WithOnboardingCluster(onboardingCluster).
@@ -459,6 +464,51 @@ func TestMapSecretToRequests(t *testing.T) {
 					assert.True(t, names[obj.GetName()], "expected request for object %s", obj.GetName())
 				}
 			}
+		})
+	}
+}
+
+func TestSPReconciler_enqueueAllObjects(t *testing.T) {
+	tests := []struct {
+		name              string // description of this test case
+		onboardingCluster *clusters.Cluster
+		wantErrorMessage  string
+		want              []reconcile.Request
+	}{
+		{
+			name: "expect reconcile requests",
+			onboardingCluster: createFakeClusterWithUnstructuredList(t, "onboarding", []client.Object{
+				&fakeApiImpl{ObjectMeta: metav1.ObjectMeta{Name: "obj-1", Namespace: testNamespaceName}},
+				&fakeApiImpl{ObjectMeta: metav1.ObjectMeta{Name: "obj-2", Namespace: testNamespaceName}},
+			}),
+			want: []reconcile.Request{
+				{NamespacedName: types.NamespacedName{Name: "obj-1", Namespace: testNamespaceName}},
+				{NamespacedName: types.NamespacedName{Name: "obj-2", Namespace: testNamespaceName}},
+			},
+		},
+		{
+			name:              "expect gvk error log without registering fake api scheme",
+			onboardingCluster: clusters.NewTestClusterFromClient("onboarding", fake.NewClientBuilder().Build()),
+			wantErrorMessage:  "failed to retrieve gvk",
+			want:              nil,
+		},
+	}
+	for _, tt := range tests {
+		core, observedLogs := observer.New(zap.ErrorLevel)
+		testContext := log.IntoContext(context.Background(), zapr.NewLogger(zap.New(core)))
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewSPReconciler[*fakeApiImpl, *fakeProviderConfigImpl](func() *fakeApiImpl {
+				return &fakeApiImpl{}
+			})
+			r.onboardingCluster = tt.onboardingCluster
+			got := r.enqueueAllObjects(testContext)
+			if len(got) == 0 {
+				logs := observedLogs.All()
+				require.Len(t, logs, 1)
+				assert.Equal(t, zap.ErrorLevel, logs[0].Level)
+				assert.Equal(t, tt.wantErrorMessage, logs[0].Message)
+			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
