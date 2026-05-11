@@ -9,6 +9,7 @@ import (
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	controllerutil2 "github.com/openmcp-project/controller-utils/pkg/controller"
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
+	apiconst "github.com/openmcp-project/openmcp-operator/api/constants"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -199,6 +200,11 @@ func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (
 	obj := r.emptyObj()
 	if err := r.onboardingCluster.Client().Get(ctx, req.NamespacedName, obj); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	// Skip reconciliation if annotation is set
+	if obj.GetAnnotations()[apiconst.OperationAnnotation] == apiconst.OperationAnnotationValueIgnore {
+		l.Info("Skipping resource due to ignore operation annotation")
+		return ctrl.Result{}, nil
 	}
 	oldObj := obj.DeepCopyObject().(T)
 	providerConfig := r.providerConfig.Load()
