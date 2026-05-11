@@ -2,6 +2,8 @@ package spruntime
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -34,9 +36,10 @@ import (
 )
 
 const (
-	testNamespaceName      = "test-namespace"
-	testObjectName         = "test-name"
-	testObjectNameNotFound = "notfound"
+	testNamespaceName                = "test-namespace"
+	testObjectName                   = "test-name"
+	testObjectNameNotFound           = "notfound"
+	testObjectNameClusterAccessError = "clusteraccesserror"
 
 	testMCPName       = "mcp-name"
 	testMCPKubeconfig = "mcp-kubeconfig"
@@ -53,11 +56,12 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 		providerConfig     *fakeProviderConfigImpl
 		req                ctrl.Request
 		want               ctrl.Result
+		wantStatusPhase    string
 		wantReconciliation bool
 		wantErr            bool
 	}{
 		{
-			name: "api obj createOrUpdate -> requeue with pc poll interval",
+			name: "CreateOrUpdate ok -> requeue with pc poll interval",
 			apiObj: &fakeApiImpl{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testObjectName,
@@ -76,11 +80,34 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 			want: ctrl.Result{
 				RequeueAfter: time.Hour,
 			},
+			wantStatusPhase:    StatusPhaseReady,
 			wantReconciliation: true,
 			wantErr:            false,
 		},
 		{
-			name: "api obj delete -> requeue with pc poll interval",
+			name: "CreateOrUpdate error -> error and status update",
+			apiObj: &fakeApiImpl{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testObjectName,
+					Namespace: testNamespaceName,
+				},
+			},
+			req: ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      testObjectName,
+					Namespace: testNamespaceName,
+				},
+			},
+			providerConfig: &fakeProviderConfigImpl{
+				FakePollInterval: time.Hour,
+			},
+			want:               ctrl.Result{},
+			wantStatusPhase:    StatusPhaseProgressing,
+			wantReconciliation: true,
+			wantErr:            true,
+		},
+		{
+			name: "Delete ok -> requeue with pc poll interval",
 			apiObj: &fakeApiImpl{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testObjectName,
@@ -103,8 +130,35 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 			want: ctrl.Result{
 				RequeueAfter: time.Hour,
 			},
+			wantStatusPhase:    StatusPhaseTerminating,
 			wantReconciliation: true,
 			wantErr:            false,
+		},
+		{
+			name: "Delete error -> error and status update",
+			apiObj: &fakeApiImpl{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testObjectName,
+					Namespace: testNamespaceName,
+					DeletionTimestamp: &metav1.Time{
+						Time: time.Now(),
+					},
+					Finalizers: []string{"string"},
+				},
+			},
+			req: ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      testObjectName,
+					Namespace: testNamespaceName,
+				},
+			},
+			providerConfig: &fakeProviderConfigImpl{
+				FakePollInterval: time.Hour,
+			},
+			want:               ctrl.Result{},
+			wantStatusPhase:    StatusPhaseTerminating,
+			wantReconciliation: true,
+			wantErr:            true,
 		},
 		{
 			name: "api obj not found -> do not requeue",
@@ -128,6 +182,7 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 				FakePollInterval: time.Hour,
 			},
 			want:               ctrl.Result{},
+			wantStatusPhase:    "",
 			wantReconciliation: false,
 			wantErr:            false,
 		},
@@ -146,6 +201,7 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 				},
 			},
 			want:               ctrl.Result{},
+			wantStatusPhase:    StatusPhaseProgressing,
 			wantReconciliation: false,
 			wantErr:            true,
 		},
@@ -171,12 +227,36 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 			wantReconciliation: false,
 			wantErr:            false,
 		},
+		{
+			name: "cluster access reconciler fails -> error and status update",
+			apiObj: &fakeApiImpl{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testObjectNameClusterAccessError,
+					Namespace: testNamespaceName,
+				},
+			},
+			providerConfig: &fakeProviderConfigImpl{
+				FakePollInterval: time.Hour,
+			},
+			req: ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      testObjectNameClusterAccessError,
+					Namespace: testNamespaceName,
+				},
+			},
+			want:               ctrl.Result{},
+			wantStatusPhase:    StatusPhaseProgressing,
+			wantReconciliation: true,
+			wantErr:            true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			onboardingCluster := createFakeCluster(t, "onboarding", tt.apiObj)
 			platformCluster := createFakeCluster(t, "platform")
-			mockSPR := &MockServiceProviderReconciler{}
+			mockSPR := &MockServiceProviderReconciler{
+				wantError: tt.wantErr,
+			}
 			r := NewSPReconciler[*fakeApiImpl, *fakeProviderConfigImpl](func() *fakeApiImpl {
 				return &fakeApiImpl{}
 			}).
@@ -218,6 +298,7 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 				if !tt.wantErr {
 					t.Errorf("Reconcile() failed: %v", gotErr)
 				}
+				assertStatusUpdate(t, onboardingCluster.Client(), tt.req, tt.wantStatusPhase)
 				return
 			}
 			if tt.wantErr {
@@ -247,8 +328,20 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 				Namespace: tt.req.Namespace,
 				Name:      testWorkloadKubeconfig,
 			}, mockSPR.contextObj.WorkloadAccessSecretKey)
+			assertStatusUpdate(t, onboardingCluster.Client(), tt.req, tt.wantStatusPhase)
 		})
 	}
+}
+
+func assertStatusUpdate(t *testing.T, c client.Client, req ctrl.Request, wantStatusPhase string) {
+	t.Helper()
+	obj := &fakeApiImpl{}
+	obj.SetName(req.Name)
+	obj.SetNamespace(req.Namespace)
+	require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(obj), obj))
+	status, ok := obj.GetStatus().(common.Status)
+	require.True(t, ok)
+	assert.Equal(t, wantStatusPhase, status.Phase)
 }
 
 var _ ClusterAccessProvider = FakeClusterAccessProvider{}
@@ -260,6 +353,7 @@ type MockServiceProviderReconciler struct {
 	contextObj           ClusterContext
 	createOrUpdateCalled bool
 	deleteCalled         bool
+	wantError            bool
 }
 
 // CreateOrUpdate implements [runtime.ServiceProviderReconciler].
@@ -268,6 +362,11 @@ func (f *MockServiceProviderReconciler) CreateOrUpdate(_ context.Context, obj *f
 	f.pcObj = pc
 	f.contextObj = cc
 	f.createOrUpdateCalled = true
+	if f.wantError {
+		StatusProgressing(obj, reasonReconcileError, "test error requested")
+		return reconcile.Result{}, errors.New("createOrUpdate failed")
+	}
+	StatusReady(obj)
 	return reconcile.Result{}, nil
 }
 
@@ -277,6 +376,10 @@ func (f *MockServiceProviderReconciler) Delete(_ context.Context, obj *fakeApiIm
 	f.pcObj = pc
 	f.contextObj = cc
 	f.deleteCalled = true
+	StatusTerminating(obj)
+	if f.wantError {
+		return reconcile.Result{}, errors.New("delete failed")
+	}
 	return reconcile.Result{}, nil
 }
 
@@ -299,12 +402,19 @@ func (f FakeClusterAccessProvider) MCPCluster(ctx context.Context, request recon
 
 // Reconcile implements [ClusterAccessProvider].
 func (f FakeClusterAccessProvider) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+	if request.Name == testObjectNameClusterAccessError {
+		return reconcile.Result{}, errors.New("cluster access reconcile failed")
+	}
 	return reconcile.Result{}, nil
 }
 
 // ReconcileDelete implements [ClusterAccessProvider].
 func (f FakeClusterAccessProvider) ReconcileDelete(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	return reconcile.Result{}, nil
+	// Fake waiting for cluster acccess deletion.
+	// This prevents finalizer removal in the delete case and the fake client from losing the not yet persisted terminating state.
+	return reconcile.Result{
+		RequeueAfter: time.Hour,
+	}, nil
 }
 
 // WorkloadAccessRequest implements [ClusterAccessProvider].
@@ -328,20 +438,31 @@ func createFakeCluster(t *testing.T, id string, clusterObjects ...client.Object)
 	scheme.AddKnownTypes(testGV, &fakeApiImpl{}, &fakeProviderConfigImpl{})
 
 	// init cluster with objects
-	fakeClient := fake.NewClientBuilder().WithObjects(clusterObjects...).WithScheme(scheme).Build()
+	fakeClient := fake.NewClientBuilder().
+		WithObjects(clusterObjects...).
+		WithScheme(scheme).
+		WithStatusSubresource(&fakeApiImpl{}).
+		Build()
 	return clusters.NewTestClusterFromClient(id, fakeClient)
 }
 
 var _ ServiceProviderAPI = &fakeApiImpl{}
 
 type fakeApiImpl struct {
-	metav1.TypeMeta
-	metav1.ObjectMeta
-	common.Status
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	common.Status     `json:"status,omitempty"`
 }
 
 func (f *fakeApiImpl) DeepCopyObject() runtime.Object {
-	return f
+	return &fakeApiImpl{
+		ObjectMeta: *f.ObjectMeta.DeepCopy(),
+		Status: common.Status{
+			ObservedGeneration: f.ObservedGeneration,
+			Phase:              f.Phase,
+			Conditions:         slices.Clone(f.Conditions),
+		},
+	}
 }
 
 func (f *fakeApiImpl) Finalizer() string {
@@ -349,7 +470,7 @@ func (f *fakeApiImpl) Finalizer() string {
 }
 
 func (f *fakeApiImpl) GetConditions() *[]metav1.Condition {
-	return nil
+	return &f.Conditions
 }
 
 func (f *fakeApiImpl) GetStatus() any {
@@ -357,8 +478,10 @@ func (f *fakeApiImpl) GetStatus() any {
 }
 
 func (f *fakeApiImpl) SetPhase(phase string) {
+	f.Phase = phase
 }
 func (f *fakeApiImpl) SetObservedGeneration(g int64) {
+	f.ObservedGeneration = g
 }
 
 var _ ProviderConfig = &fakeProviderConfigImpl{}
