@@ -49,11 +49,12 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		apiObj         ServiceProviderAPI
-		providerConfig *fakeProviderConfigImpl
-		req            ctrl.Request
-		want           ctrl.Result
-		wantErr        bool
+		apiObj             ServiceProviderAPI
+		providerConfig     *fakeProviderConfigImpl
+		req                ctrl.Request
+		want               ctrl.Result
+		wantReconciliation bool
+		wantErr            bool
 	}{
 		{
 			name: "api obj createOrUpdate -> requeue with pc poll interval",
@@ -75,7 +76,8 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 			want: ctrl.Result{
 				RequeueAfter: time.Hour,
 			},
-			wantErr: false,
+			wantReconciliation: true,
+			wantErr:            false,
 		},
 		{
 			name: "api obj delete -> requeue with pc poll interval",
@@ -101,7 +103,8 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 			want: ctrl.Result{
 				RequeueAfter: time.Hour,
 			},
-			wantErr: false,
+			wantReconciliation: true,
+			wantErr:            false,
 		},
 		{
 			name: "api obj not found -> do not requeue",
@@ -124,8 +127,9 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 			providerConfig: &fakeProviderConfigImpl{
 				FakePollInterval: time.Hour,
 			},
-			want:    ctrl.Result{},
-			wantErr: false,
+			want:               ctrl.Result{},
+			wantReconciliation: false,
+			wantErr:            false,
 		},
 		{
 			name: "provider config not found -> error",
@@ -141,11 +145,12 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 					Namespace: testNamespaceName,
 				},
 			},
-			want:    ctrl.Result{},
-			wantErr: true,
+			want:               ctrl.Result{},
+			wantReconciliation: false,
+			wantErr:            true,
 		},
 		{
-			name: "Operation annotation -> ignore",
+			name: "Operation annotation ignore -> no reconciliation, no requeue",
 			apiObj: &fakeApiImpl{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      testObjectName,
@@ -161,9 +166,10 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 					Namespace: testNamespaceName,
 				},
 			},
-			providerConfig: &fakeProviderConfigImpl{},
-			want:           ctrl.Result{},
-			wantErr:        false,
+			providerConfig:     &fakeProviderConfigImpl{},
+			want:               ctrl.Result{},
+			wantReconciliation: false,
+			wantErr:            false,
 		},
 	}
 	for _, tt := range tests {
@@ -218,26 +224,29 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 				t.Fatal("Reconcile() succeeded unexpectedly")
 			}
 			assert.Equal(t, tt.want, got)
-			if tt.apiObj.GetAnnotations()[apiconst.OperationAnnotation] == apiconst.OperationAnnotationValueIgnore {
+			assert.Equal(t, tt.wantReconciliation, mockSPR.createOrUpdateCalled || mockSPR.deleteCalled)
+
+			if !tt.wantReconciliation {
+				assert.False(t, mockSPR.createOrUpdateCalled)
+				assert.False(t, mockSPR.deleteCalled)
 				assert.Nil(t, mockSPR.apiObj)
 				assert.Nil(t, mockSPR.pcObj)
 				assert.Empty(t, mockSPR.contextObj.MCPAccessSecretKey)
 				assert.Empty(t, mockSPR.contextObj.WorkloadAccessSecretKey)
 				return
 			}
-			if tt.req.Name != testObjectNameNotFound {
-				// assert that the generic reconciler delegates objects to the target reconciler as expected
-				assert.Equal(t, client.ObjectKeyFromObject(tt.apiObj), client.ObjectKeyFromObject(mockSPR.apiObj))
-				assert.Equal(t, client.ObjectKeyFromObject(tt.providerConfig), client.ObjectKeyFromObject(mockSPR.pcObj))
-				assert.Equal(t, client.ObjectKey{
-					Namespace: tt.req.Namespace,
-					Name:      testMCPKubeconfig,
-				}, mockSPR.contextObj.MCPAccessSecretKey)
-				assert.Equal(t, client.ObjectKey{
-					Namespace: tt.req.Namespace,
-					Name:      testWorkloadKubeconfig,
-				}, mockSPR.contextObj.WorkloadAccessSecretKey)
-			}
+
+			// assert that the generic reconciler delegates objects to the target reconciler as expected
+			assert.Equal(t, client.ObjectKeyFromObject(tt.apiObj), client.ObjectKeyFromObject(mockSPR.apiObj))
+			assert.Equal(t, client.ObjectKeyFromObject(tt.providerConfig), client.ObjectKeyFromObject(mockSPR.pcObj))
+			assert.Equal(t, client.ObjectKey{
+				Namespace: tt.req.Namespace,
+				Name:      testMCPKubeconfig,
+			}, mockSPR.contextObj.MCPAccessSecretKey)
+			assert.Equal(t, client.ObjectKey{
+				Namespace: tt.req.Namespace,
+				Name:      testWorkloadKubeconfig,
+			}, mockSPR.contextObj.WorkloadAccessSecretKey)
 		})
 	}
 }
@@ -246,9 +255,11 @@ var _ ClusterAccessProvider = FakeClusterAccessProvider{}
 var _ ServiceProviderReconciler[*fakeApiImpl, *fakeProviderConfigImpl] = &MockServiceProviderReconciler{}
 
 type MockServiceProviderReconciler struct {
-	apiObj     ServiceProviderAPI
-	pcObj      ProviderConfig
-	contextObj ClusterContext
+	apiObj               ServiceProviderAPI
+	pcObj                ProviderConfig
+	contextObj           ClusterContext
+	createOrUpdateCalled bool
+	deleteCalled         bool
 }
 
 // CreateOrUpdate implements [runtime.ServiceProviderReconciler].
@@ -256,6 +267,7 @@ func (f *MockServiceProviderReconciler) CreateOrUpdate(_ context.Context, obj *f
 	f.apiObj = obj
 	f.pcObj = pc
 	f.contextObj = cc
+	f.createOrUpdateCalled = true
 	return reconcile.Result{}, nil
 }
 
@@ -264,6 +276,7 @@ func (f *MockServiceProviderReconciler) Delete(_ context.Context, obj *fakeApiIm
 	f.apiObj = obj
 	f.pcObj = pc
 	f.contextObj = cc
+	f.deleteCalled = true
 	return reconcile.Result{}, nil
 }
 
