@@ -23,6 +23,7 @@ import (
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	"github.com/openmcp-project/openmcp-operator/api/common"
+	apiconst "github.com/openmcp-project/openmcp-operator/api/constants"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -143,6 +144,27 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 			want:    ctrl.Result{},
 			wantErr: true,
 		},
+		{
+			name: "Operation annotation -> ignore",
+			apiObj: &fakeApiImpl{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testObjectName,
+					Namespace: testNamespaceName,
+					Annotations: map[string]string{
+						apiconst.OperationAnnotation: apiconst.OperationAnnotationValueIgnore,
+					},
+				},
+			},
+			req: ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      testObjectName,
+					Namespace: testNamespaceName,
+				},
+			},
+			providerConfig: &fakeProviderConfigImpl{},
+			want:           ctrl.Result{},
+			wantErr:        false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -196,6 +218,13 @@ func TestSPReconciler_Reconcile(t *testing.T) {
 				t.Fatal("Reconcile() succeeded unexpectedly")
 			}
 			assert.Equal(t, tt.want, got)
+			if tt.apiObj.GetAnnotations()[apiconst.OperationAnnotation] == apiconst.OperationAnnotationValueIgnore {
+				assert.Nil(t, mockSPR.apiObj)
+				assert.Nil(t, mockSPR.pcObj)
+				assert.Empty(t, mockSPR.contextObj.MCPAccessSecretKey)
+				assert.Empty(t, mockSPR.contextObj.WorkloadAccessSecretKey)
+				return
+			}
 			if tt.req.Name != testObjectNameNotFound {
 				// assert that the generic reconciler delegates objects to the target reconciler as expected
 				assert.Equal(t, client.ObjectKeyFromObject(tt.apiObj), client.ObjectKeyFromObject(mockSPR.apiObj))
