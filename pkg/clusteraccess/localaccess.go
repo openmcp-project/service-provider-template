@@ -40,7 +40,7 @@ func (s *localClusterAccessReconciler) MCPCluster(ctx context.Context, request r
 		return cluster, err
 	}
 	// patch cluster client with annotation value
-	return MustPatchClusterClient(ctx, ar, cluster), err
+	return MustPatchClusterClient(ctx, ar, cluster), nil
 }
 
 // WorkloadCluster implements [ClusterAccessProvider].
@@ -54,7 +54,7 @@ func (s *localClusterAccessReconciler) WorkloadCluster(ctx context.Context, requ
 		return cluster, err
 	}
 	// patch cluster client with annotation value
-	return MustPatchClusterClient(ctx, ar, cluster), err
+	return MustPatchClusterClient(ctx, ar, cluster), nil
 }
 
 // SkipWorkloadCluster implements [clusteraccess.Reconciler].
@@ -114,7 +114,7 @@ func (s *localClusterAccessReconciler) WithWorkloadScheme(scheme *runtime.Scheme
 //	  kind.clusters.openmcp.cloud/localhost: https://127.0.0.1:42827
 const localAnnotationKey = "kind.clusters.openmcp.cloud/localhost"
 
-// MustPatchClusterClient replaces the cluster client with the host value of the local AR annotation
+// MustPatchClusterClient replaces the cluster client with the host value of the local AR annotation.
 // If no local annotation is present then the original cluster of the wrapped reconciler is returned.
 func MustPatchClusterClient(ctx context.Context, ar *clustersv1alpha1.AccessRequest, cluster *clusters.Cluster) *clusters.Cluster {
 	annotations := ar.GetAnnotations()
@@ -122,15 +122,18 @@ func MustPatchClusterClient(ctx context.Context, ar *clustersv1alpha1.AccessRequ
 		logf.FromContext(ctx).Info("debug access provider used but no annotations set")
 		return cluster
 	}
-	if value, exists := annotations[localAnnotationKey]; exists {
-		restCfg := cluster.RESTConfig()
-		restCfg.Host = value
-		// re-init client
-		if err := cluster.InitializeClient(cluster.Client().Scheme()); err != nil {
-			panic(err)
-		}
-	} else {
-		logf.FromContext(ctx).Info("debug access provider used but no annotations set")
+
+	value, exists := annotations[localAnnotationKey]
+	if !exists {
+		logf.FromContext(ctx).Info("debug access provider used but local annotation key not found", "key", localAnnotationKey)
+		return cluster
+	}
+	restCfg := cluster.RESTConfig()
+	restCfg.Host = value
+
+	// re-init client
+	if err := cluster.InitializeClient(cluster.Client().Scheme()); err != nil {
+		panic(err)
 	}
 	return cluster
 }
