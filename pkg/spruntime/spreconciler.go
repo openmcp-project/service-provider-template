@@ -290,10 +290,8 @@ func (r *SPReconciler[T, PC]) delete(ctx context.Context, obj T, pc PC) (ctrl.Re
 		return res, nil
 	}
 	// remove finalizer
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.onboardingCluster.Client(), obj, func() error {
-		controllerutil.RemoveFinalizer(obj, obj.Finalizer())
-		return nil
-	}); err != nil {
+	controllerutil.RemoveFinalizer(obj, obj.Finalizer())
+	if err := r.onboardingCluster.Client().Update(ctx, obj); err != nil {
 		terminatingWithReason(obj, reasonReconcileError, "failed to remove finalizer")
 		return ctrl.Result{}, err
 	}
