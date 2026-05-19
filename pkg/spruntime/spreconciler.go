@@ -194,7 +194,7 @@ func (r *SPReconciler[T, PC]) WithProviderConfig(config PC) *SPReconciler[T, PC]
 }
 
 // Reconcile orchestrates platform and DomainServiceReconciler logic to reconcile APIObjects
-func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reconcileErr error) {
 	l := logf.FromContext(ctx)
 	// common reconciler logic including get obj, providerconfig, mcp/workload access
 	obj := r.emptyObj()
@@ -207,10 +207,16 @@ func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 	oldObj := obj.DeepCopyObject().(T)
+	// always try to update the obj status
+	defer func() {
+		if err := r.updateStatus(ctx, obj, oldObj); err != nil {
+			l.Error(err, "status update failed")
+			reconcileErr = errors.Join(reconcileErr, err)
+		}
+	}()
 	providerConfig := r.providerConfig.Load()
 	if providerConfig == nil {
-		StatusProgressing(obj, "ReconcileError", "No ProviderConfig found")
-		r.updateStatus(ctx, obj, oldObj)
+		StatusProgressing(obj, reasonReconcileError, "No ProviderConfig found")
 		return ctrl.Result{}, errors.New("provider config missing")
 	}
 	providerConfigCopy := (*providerConfig).DeepCopyObject().(PC)
@@ -222,7 +228,6 @@ func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (
 		res, err = r.delete(ctx, obj, providerConfigCopy)
 	} else {
 		res, err = r.createOrUpdate(ctx, obj, providerConfigCopy)
-		r.updateStatus(ctx, obj, oldObj)
 	}
 	// return based on result/err
 	if err != nil {
@@ -238,40 +243,35 @@ func (r *SPReconciler[T, PC]) Reconcile(ctx context.Context, req ctrl.Request) (
 	}, nil
 }
 
-func (r *SPReconciler[T, PC]) updateStatus(ctx context.Context, newObj T, oldObj T) {
+func (r *SPReconciler[T, PC]) updateStatus(ctx context.Context, newObj T, oldObj T) error {
 	if equality.Semantic.DeepEqual(oldObj.GetStatus(), newObj.GetStatus()) {
-		return
+		return nil
 	}
-	if err := r.onboardingCluster.Client().Status().Patch(ctx, newObj, client.MergeFrom(oldObj)); err != nil {
-		l := logf.FromContext(ctx)
-		l.Error(err, "Patch status failed")
-	}
+	err := r.onboardingCluster.Client().Status().Patch(ctx, newObj, client.MergeFrom(oldObj))
+	// can't update status if object doesn't exist
+	return client.IgnoreNotFound(err)
 }
 
 // delete eventually invokes the domain delete logic of a service provider and is the place to implement
 // common logic that should be abstracted away from a service provider developer like handling cluster access.
 func (r *SPReconciler[T, PC]) delete(ctx context.Context, obj T, pc PC) (ctrl.Result, error) {
-	l := logf.FromContext(ctx)
-	oldObj := obj.DeepCopyObject().(T)
-
 	req := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(obj)}
 	accessRequestsInDeletion, err := r.areAccessRequestsInDeletion(ctx, req)
 	if err != nil {
-		l.Error(err, "failed to check access requests in deletion")
+		StatusProgressing(obj, reasonReconcileError, "failed to check access requests in deletion")
 		return reconcile.Result{}, err
 	}
 	if !accessRequestsInDeletion {
 		clusters, res, err := r.clusters(ctx, req)
 		if err != nil {
-			StatusProgressing(obj, "ReconcileError", "cluster setup error")
+			terminatingWithReason(obj, reasonReconcileError, "cluster cleanup error")
 			return ctrl.Result{}, err
 		}
 		if res.RequeueAfter > 0 {
-			StatusProgressing(obj, "Reconciling", "clusters being setup")
+			terminatingWithReason(obj, "Reconciling", "cluster cleanup")
 			return res, nil
 		}
 		res, err = r.serviceProviderReconciler.Delete(ctx, obj, pc, clusters)
-		r.updateStatus(ctx, obj, oldObj)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -282,6 +282,7 @@ func (r *SPReconciler[T, PC]) delete(ctx context.Context, obj T, pc PC) (ctrl.Re
 	// remove cluster access
 	res, err := r.clusterAccessReconciler.ReconcileDelete(ctx, req)
 	if err != nil {
+		terminatingWithReason(obj, reasonReconcileError, "failed cluster access reconcile delete")
 		return ctrl.Result{}, err
 	}
 	// make sure to not drop the object before cleanup has been done
@@ -291,6 +292,7 @@ func (r *SPReconciler[T, PC]) delete(ctx context.Context, obj T, pc PC) (ctrl.Re
 	// remove finalizer
 	controllerutil.RemoveFinalizer(obj, obj.Finalizer())
 	if err := r.onboardingCluster.Client().Update(ctx, obj); err != nil {
+		terminatingWithReason(obj, reasonReconcileError, "failed to remove finalizer")
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
@@ -303,11 +305,13 @@ func (r *SPReconciler[T, PC]) createOrUpdate(ctx context.Context, obj T, pc PC) 
 		controllerutil.AddFinalizer(obj, obj.Finalizer())
 		return nil
 	}); err != nil {
+		StatusProgressing(obj, reasonReconcileError, "failed to add finalizer")
 		return ctrl.Result{}, err
 	}
 	req := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(obj)}
 	clusters, res, err := r.clusters(ctx, req)
 	if err != nil {
+		StatusProgressing(obj, reasonReconcileError, "cluster setup error")
 		return ctrl.Result{}, err
 	}
 	if res.RequeueAfter > 0 {
@@ -342,7 +346,6 @@ func (r *SPReconciler[T, PC]) areAccessRequestsInDeletion(ctx context.Context, r
 // clusters returns any request scoped cluster that a servicer provider developer might want to access in order
 // to delivery its service.
 func (r *SPReconciler[T, PC]) clusters(ctx context.Context, req ctrl.Request) (ClusterContext, ctrl.Result, error) {
-	l := logf.FromContext(ctx)
 	clusters := ClusterContext{}
 	res, err := r.clusterAccessReconciler.Reconcile(ctx, req)
 	if err != nil {
@@ -367,7 +370,6 @@ func (r *SPReconciler[T, PC]) clusters(ctx context.Context, req ctrl.Request) (C
 	if r.withWorkloadCluster {
 		workloadCluster, err := r.clusterAccessReconciler.WorkloadCluster(ctx, req)
 		if err != nil {
-			l.Error(err, "workload cluster access error")
 			return clusters, ctrl.Result{}, err
 		}
 		if workloadCluster == nil {
