@@ -128,8 +128,9 @@ func MustPatchClusterClient(ctx context.Context, ar *clustersv1alpha1.AccessRequ
 		logf.FromContext(ctx).Info("debug access provider used but local annotation key not found", "key", localAnnotationKey)
 		return cluster
 	}
-	restCfg := cluster.RESTConfig()
-	restCfg.Host = value
+ 	cfg := *cluster.RESTConfig()                                                                                                                
+	cfg.Host = value                                                                                                                            
+	cluster.WithRESTConfig(&cfg)
 
 	// re-init client
 	if err := cluster.InitializeClient(cluster.Client().Scheme()); err != nil {
