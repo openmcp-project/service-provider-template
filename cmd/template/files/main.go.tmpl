@@ -55,7 +55,8 @@ import (
 
 	"github.com/openmcp-project/service-provider-template/pkg/spruntime"
 
-	localaccess "github.com/openmcp-project/service-provider-template/pkg/clusteraccess"
+	"github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider"
+	localaccess "github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider/clusteraccess"
 	{{.KindLower}}sv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
 	"github.com/openmcp-project/service-provider-template/internal/controller"
 	// +kubebuilder:scaffold:imports
@@ -324,20 +325,19 @@ func main() {
 		clusterAccessReconciler = localaccess.NewLocalAccessReconciler(clusterAccessReconciler)
 	}
 	
-	spr := spruntime.NewSPReconciler[*{{.KindLower}}sv1alpha1.{{.Kind}}, *{{.KindLower}}sv1alpha1.ProviderConfig](
-		func() *{{.KindLower}}sv1alpha1.{{.Kind}} { return &{{.KindLower}}sv1alpha1.{{.Kind}}{} },
-	).
-		WithPlatformCluster(platformCluster).
-		WithOnboardingCluster(onboardingCluster).
+	spr := serviceprovider.NewAPIReconcilerBuilder[*{{.KindLower}}sv1alpha1.{{.Kind}}, *{{.KindLower}}sv1alpha1.ProviderConfig]().
+		EmptyObjectProvider(func() *{{.KindLower}}sv1alpha1.{{.Kind}} { return &{{.KindLower}}sv1alpha1.{{.Kind}}{} }).
+		PlatformCluster(platformCluster).
+		OnboardingCluster(onboardingCluster).
 		{{- if .WithSecretWatcher }}
-		WithSecretNamespace(podNamespace).
+		SecretNamespace(podNamespace).
 		{{- end }}
-		WithServiceProviderReconciler(&controller.{{.Kind}}Reconciler{
+		Reconciler(&controller.{{.Kind}}Reconciler{
 			OnboardingCluster: onboardingCluster,
 			PlatformCluster:   platformCluster,
 			PodNamespace:      podNamespace,
 		}).
-		WithClusterAccessReconciler(clusterAccessReconciler.
+		ClusterAccessReconciler(clusterAccessReconciler.
 			WithMCPScheme(mcpScheme).
 			{{- if .WithWorkloadCluster }}
 			WithWorkloadScheme(workloadScheme).
@@ -354,20 +354,22 @@ func main() {
 				Name: "cluster-admin",
 				Kind: "ClusterRole",
 			},
-		}))
+		})).
 			{{- else }}
 			SkipWorkloadCluster(),
-		)
+		).
 			{{- end }}
+		MustBuild()
 	if err := spr.SetupWithManager(mgr, "{{.KindLower}}", providerConfigUpdates); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "{{.Kind}}")
 		os.Exit(1)
 	}
-	pcr := spruntime.NewPCReconciler(providerName, func() *{{.KindLower}}sv1alpha1.ProviderConfig {
-		return &{{.KindLower}}sv1alpha1.ProviderConfig{}
-	}).
-		WithPlatformCluster(platformCluster).
-		WithUpdateChannel(providerConfigUpdates)
+	pcr := serviceprovider.NewConfigReconcilerBuilder[*{{.KindLower}}sv1alpha1.ProviderConfig]().
+		EmptyObjectProvider(func() *{{.KindLower}}sv1alpha1.ProviderConfig { return &{{.KindLower}}sv1alpha1.ProviderConfig{} }).
+		ProviderName(providerName).
+		PlatformCluster(platformCluster).
+		UpdateChannel(providerConfigUpdates).
+		MustBuild()
 	if err := pcr.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ProviderConfig")
 		os.Exit(1)
