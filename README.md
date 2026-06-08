@@ -2,6 +2,25 @@
 
 # service-provider-template
 
+## Quality Criteria
+
+<!-- Update the tier badge and tick each criterion as you implement it. See https://open-control-plane.io/developers/serviceprovider/quality-criteria for definitions. -->
+
+[![Quality: Experimental](https://img.shields.io/badge/Quality-Experimental-e69138?style=flat-square&labelColor=555)](https://open-control-plane.io/developers/serviceprovider/quality-criteria)
+
+| Criterion                         | Status  | Notes |
+| --------------------------------- | :----:  | ----- |
+| Deletion behaviour                |   ❌    |       |
+| Status reporting & error messages |   ❌    |       |
+| Operation annotations             |   ❌    |       |
+| API stability policy              |   ❌    |       |
+| Custom CA support                 |   ❌    |       |
+| Release artifacts (image + OCM)   |   ❌    |       |
+| Testing                           |   ❌    |       |
+| Ownership and maintenance docs    |   ❌    |       |
+
+See the [OpenControlPlane Quality Criteria](https://open-control-plane.io/developers/serviceprovider/quality-criteria) for definitions.
+
 ## About this project
 
 A template for building @openmcp-project Service Providers.
