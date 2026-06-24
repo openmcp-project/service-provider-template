@@ -17,6 +17,16 @@
   "postUpdateOptions": [
     "gomodTidy"
   ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["test/e2e/.*\\.go$"],
+      "matchStrings": [
+        "Image:\\s+\"(?<depName>[^:]+):(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
   "packageRules": [
     {
       "description": "Group openmcp-project/build submodule and workflow updates",
