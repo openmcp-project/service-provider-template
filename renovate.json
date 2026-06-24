@@ -17,6 +17,7 @@
   "postUpdateOptions": [
     "gomodTidy"
   ],
+  "ignorePresets": [":ignoreModulesAndTests"],
   "customManagers": [
     {
       "customType": "regex",
