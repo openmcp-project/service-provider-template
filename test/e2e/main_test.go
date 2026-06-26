@@ -24,14 +24,16 @@ func TestMain(m *testing.M) {
 	openmcp := setup.OpenMCPSetup{
 		Namespace: "openmcp-system",
 		Operator: setup.OpenMCPOperatorSetup{
-			Name:         "openmcp-operator",
+			Name: "openmcp-operator",
+			// renovate: datasource=docker depName=ghcr.io/openmcp-project/images/openmcp-operator
 			Image:        "ghcr.io/openmcp-project/images/openmcp-operator:v1.0.1",
 			Environment:  "debug",
 			PlatformName: "platform",
 		},
 		ClusterProviders: []providers.ClusterProviderSetup{
 			{
-				Name:  "kind",
+				Name: "kind",
+				// renovate: datasource=docker depName=ghcr.io/openmcp-project/images/cluster-provider-kind
 				Image: "ghcr.io/openmcp-project/images/cluster-provider-kind:v0.4.2",
 			},
 		},
