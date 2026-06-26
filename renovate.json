@@ -22,10 +22,7 @@
     {
       "customType": "regex",
       "fileMatch": ["test/e2e/.*\\.go$"],
-      "matchStrings": [
-        "Image:\\s+\"(?<depName>[^:]+):(?<currentValue>[^\"]+)\""
-      ],
-      "datasourceTemplate": "docker"
+      "matchStrings": ["// renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)\\s+[^\"]*\"[^:]+:(?<currentValue>[^\"]+)\""]
     }
   ],
   "packageRules": [
