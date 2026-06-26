@@ -21,7 +21,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["test/e2e/.*\\.go$"],
+      "managerFilePatterns": [
+        "/test/e2e/.*\\.go$/"
+      ],
       "matchStrings": ["// renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)\\s+[^\"]*\"[^:]+:(?<currentValue>[^\"]+)\""]
     }
   ],
