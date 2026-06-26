@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/openmcp-project/controller-utils v0.29.0
-	golang.org/x/tools v0.45.0
+	golang.org/x/tools v0.47.0
 	k8s.io/apimachinery v0.36.1
 )
 
@@ -29,7 +29,7 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/vladimirvivien/gexe v0.5.0 // indirect
-	golang.org/x/mod v0.36.0 // indirect
+	golang.org/x/mod v0.37.0 // indirect
 	k8s.io/api v0.36.1 // indirect
 	k8s.io/client-go v0.36.1 // indirect
 	k8s.io/streaming v0.36.1 // indirect
@@ -73,7 +73,7 @@ require (
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
