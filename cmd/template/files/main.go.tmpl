@@ -348,7 +348,6 @@ func main() {
 			},
 		},
 	}
-
 	mcpClusterRequest := advanced.ExistingClusterRequest("mcp", "mcp", func(req reconcile.Request, _ ...any) (*common.ObjectReference, error) {
 		namespace, err := utils.StableMCPNamespace(req.Name, req.Namespace)
 		if err != nil {
@@ -384,7 +383,6 @@ func main() {
 			},
 		},
 	}
-
 	workloadClusterRequest := advanced.NewClusterRequest("workload", "wl", advanced.StaticClusterRequestSpecGenerator(&clustersv1alpha1.ClusterRequestSpec{
 			Purpose: clustersv1alpha1.PURPOSE_WORKLOAD,
 		})).
