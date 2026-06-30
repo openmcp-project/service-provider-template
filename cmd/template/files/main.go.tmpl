@@ -235,18 +235,6 @@ func main() {
 		setupLog.Error(fmt.Errorf("environment variable %s not set - cannot determine source namespace for secrets", openmcpconst.EnvVariablePodNamespace), "pod namespace missing")
 		os.Exit(1)
 	}
-	initPermissions := []clustersv1alpha1.PermissionsRequest{
-		{
-
-			Rules: []rbacv1.PolicyRule{
-				{
-					APIGroups: []string{"apiextensions.k8s.io"},
-					Resources: []string{"customresourcedefinitions"},
-					Verbs:     []string{"*"},
-				},
-			},
-		},
-	}
 	clusterAccessManager := clusteraccess.NewClusterAccessManager(platformCluster.Client(),
 		{{.KindLower}}sv1alpha1.GroupVersion.Group, os.Getenv("POD_NAMESPACE"))
 	clusterAccessManager.WithLogger(&log).
@@ -255,6 +243,18 @@ func main() {
 	ctx := context.Background()
 	// init (job that installs CRDs)
 	if command == "init" {
+		initPermissions := []clustersv1alpha1.PermissionsRequest{
+			{
+
+				Rules: []rbacv1.PolicyRule{
+					{
+						APIGroups: []string{"apiextensions.k8s.io"},
+						Resources: []string{"customresourcedefinitions"},
+						Verbs:     []string{"*"},
+					},
+				},
+			},
+		}
 		onboardingCluster, err := requestOnboardingClusterAccess(ctx, clusterAccessManager, platformCluster, initPermissions, "init")
 		if err != nil {
 			setupLog.Error(err, "Failed to create and wait for onboarding cluster access")
