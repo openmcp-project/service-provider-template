@@ -329,6 +329,7 @@ func main() {
 
 	providerConfigUpdates := make(chan event.GenericEvent)
 
+	// TODO: define minimum set of permission the service provider requires on the mcp cluster
 	mcpTokenAccessConfig := &clustersv1alpha1.TokenConfig{
 		Permissions: []clustersv1alpha1.PermissionsRequest{
 			{
@@ -364,6 +365,7 @@ func main() {
 		Build()
 	{{- if .WithWorkloadCluster }}
 
+	// TODO: define minimum set of permission the service provider requires on the workload cluster
 	workloadTokenAccessConfig := &clustersv1alpha1.TokenConfig{
 		Permissions: []clustersv1alpha1.PermissionsRequest{
 			{
