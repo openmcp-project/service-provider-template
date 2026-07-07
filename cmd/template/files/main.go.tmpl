@@ -327,8 +327,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	providerConfigUpdates := make(chan event.GenericEvent)
-
 	// TODO: define minimum set of permission the service provider requires on the mcp cluster
 	mcpTokenAccessConfig := &clustersv1alpha1.TokenConfig{
 		Permissions: []clustersv1alpha1.PermissionsRequest{
@@ -415,6 +413,7 @@ func main() {
 
 	spr := serviceprovider.NewAPIReconcilerBuilder[*{{.KindLower}}sv1alpha1.{{.Kind}}, *{{.KindLower}}sv1alpha1.ProviderConfig]().
 		EmptyObjectProvider(func() *{{.KindLower}}sv1alpha1.{{.Kind}} { return &{{.KindLower}}sv1alpha1.{{.Kind}}{} }).
+		EmptyConfigProvider(func() *{{.KindLower}}sv1alpha1.ProviderConfig { return &{{.KindLower}}sv1alpha1.ProviderConfig{} }).
 		PlatformCluster(platformCluster).
 		OnboardingCluster(onboardingCluster).
 		{{- if .WithSecretWatcher }}
@@ -427,18 +426,8 @@ func main() {
 		}).
 		AdvancedClusterAccessReconciler(clusterAccessReconciler).
 		MustBuild()
-	if err := spr.SetupWithManager(mgr, "{{.KindLower}}", providerConfigUpdates); err != nil {
+	if err := spr.SetupWithManager(mgr, "{{.KindLower}}"); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "{{.Kind}}")
-		os.Exit(1)
-	}
-	pcr := serviceprovider.NewConfigReconcilerBuilder[*{{.KindLower}}sv1alpha1.ProviderConfig]().
-		EmptyObjectProvider(func() *{{.KindLower}}sv1alpha1.ProviderConfig { return &{{.KindLower}}sv1alpha1.ProviderConfig{} }).
-		ProviderName(providerName).
-		PlatformCluster(platformCluster).
-		UpdateChannel(providerConfigUpdates).
-		MustBuild()
-	if err := pcr.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ProviderConfig")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
