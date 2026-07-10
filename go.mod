@@ -1,6 +1,6 @@
 module github.com/openmcp-project/service-provider-template
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/openmcp-project/controller-utils v0.30.0
@@ -25,7 +25,7 @@ require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/mattn/go-isatty v0.0.21 // indirect
 	github.com/moby/spdystream v0.5.1 // indirect
-	github.com/openmcp-project/openmcp-operator/api v1.0.1 // indirect
+	github.com/openmcp-project/openmcp-operator/api v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/vladimirvivien/gexe v0.5.0 // indirect
@@ -87,7 +87,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.36.2
 	k8s.io/component-base v0.36.2 // indirect
 	k8s.io/klog/v2 v2.140.0
-	k8s.io/kube-openapi v0.0.0-20260512234627-ef417d054102 // indirect
+	k8s.io/kube-openapi v0.0.0-20260603220949-865597e52e25 // indirect
 	k8s.io/utils v0.0.0-20260507154919-ff6756f316d2 // indirect
 	sigs.k8s.io/e2e-framework v0.7.0
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
