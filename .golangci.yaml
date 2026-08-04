@@ -101,6 +101,8 @@ linters:
 
   exclusions:
     generated: strict
+    presets:
+      - comments
     rules:
       # Exclude some linters from running on tests files.
       - path: _test(ing)?\.go
@@ -149,10 +151,6 @@ linters:
         linters:
           - gosec
           - gas
-      # ease package comments rule
-      - text: "package-comments:"
-        linters:
-          - revive
 
 issues:
   # Show only new issues: if there are unstaged changes or untracked files,
