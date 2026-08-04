@@ -32,6 +32,8 @@ import (
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	crdutil "github.com/openmcp-project/controller-utils/pkg/crds"
 	"github.com/openmcp-project/controller-utils/pkg/logging"
+	"github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider"
+	localaccess "github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider/clusteraccess"
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	"github.com/openmcp-project/openmcp-operator/api/common"
 	openmcpconst "github.com/openmcp-project/openmcp-operator/api/constants"
@@ -39,10 +41,10 @@ import (
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess"
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess/advanced"
 	"github.com/openmcp-project/openmcp-operator/lib/utils"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -54,8 +56,6 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	"github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider"
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/internal/controller"
@@ -431,7 +431,7 @@ func main() {
 		WithRetryInterval(10 * time.Second)
 
 	// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
-	spr := serviceprovider.NewAPIReconcilerBuilder[*foosv1alpha1.FooService, *foosv1alpha1.ProviderConfig]().
+	spr := serviceprovider.NewAPIReconcilerBuilder[*foosv1alpha1.Foo, *foosv1alpha1.ProviderConfig]().
 		// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
 		EmptyObjectProvider(func() *foosv1alpha1.Foo { return &foosv1alpha1.Foo{} }).
 		// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
