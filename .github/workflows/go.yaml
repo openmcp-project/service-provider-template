@@ -27,9 +27,13 @@ jobs:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install opencontrolplane-gen
+        run: |
+          go install github.com/openmcp-project/opencontrolplane-gen@v1.0.2
+
       - name: Generate template
         run: |
-          go run ./cmd/template -v -w -s
+          task template:generate-provider workloadcluster=true secretwatcher=true samplecode=true
 
       - name: task generate
         run: |
