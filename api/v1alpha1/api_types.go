@@ -81,6 +81,7 @@ type Foo struct {
 
 // opencontrolplane-gen:replace Foo=KIND
 // FooList contains a list of Foo
+// opencontrolplane-gen:replace Foo=KIND
 type FooList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -105,6 +106,7 @@ func (o *Foo) Finalizer() string {
 
 // opencontrolplane-gen:replace Foo=KIND
 // GetStatus returns the status of the Foo resource
+// opencontrolplane-gen:replace Foo=KIND
 func (o *Foo) GetStatus() any {
 	return o.Status
 }
