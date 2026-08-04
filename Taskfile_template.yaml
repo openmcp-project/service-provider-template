@@ -10,13 +10,18 @@ tasks:
     desc: "Execute the template for local development"
     vars:
       debug: '{{.debug | default "false"}}'
-      watch: '{{.watch | default "platform"}}'
+      workloadcluster: '{{.workloadcluster | default "false"}}'
+      secretwatcher: '{{.secretwatcher | default "false"}}'
+      samplecode: '{{ .samplecode | default "false"}}'
     env:
       DEBUG: "{{ .debug }}"
-      KIND: "Example"
-      KIND_LOWER: "example"
-      SERVICE_NAME: "example"
-      WATCH: "{{ lower .watch }}"
+      KIND: "ExampleKind"
+      KIND_LOWER: "examplekind"
+      GROUP: "examplegroup"
+      PROVIDER_NAME: "example"
+      WORKLOADCLUSTER: "{{ .workloadcluster }}"
+      SECRETWATCHER: "{{ .secretwatcher }}"
+      SAMPLECODE: "{{ .samplecode }}"
     cmds:
       - go generate ./...
 
@@ -52,13 +57,18 @@ tasks:
       name: '{{.name | default "example"}}'
       watch: '{{.watch | default "platform"}}'
       module: '{{.module | default "github.com/openmcp-project/service-provider-example"}}'
+      workloadcluster: '{{.workloadcluster | default "false"}}'
+      secretwatcher: '{{.secretwatcher | default "false"}}'
+      samplecode: '{{ .samplecode | default "false"}}'
     env:
       KIND: "{{ .api }}"
       KIND_LOWER: "{{ lower .api }}"
-      SERVICE_NAME: "{{ lower .name }}"
-      WATCH: "{{ lower .watch }}"
+      PROVIDER_NAME: "{{ lower .name }}"
       CMD_FOLDER: "service-provider-{{ lower .name }}"
       MODULE: "{{ .module }}"
+      WORKLOADCLUSTER: "{{ .workloadcluster }}"
+      SECRETWATCHER: "{{ .secretwatcher }}"
+      SAMPLECODE: "{{ .samplecode }}"
     cmds:
       - DRY_RUN={{.dryrun}} go generate ./...
       - cmd: mv ./cmd/service-provider-template ./cmd/${CMD_FOLDER}
