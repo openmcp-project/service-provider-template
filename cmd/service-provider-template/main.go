@@ -59,7 +59,7 @@ import (
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/internal/controller"
-	// opencontrolplane-gen:replace fooservice=KIND_LOWER github.com/openmcp-project/service-provider-template=MODULE
+	// opencontrolplane-gen:replace foo=KIND_LOWER github.com/openmcp-project/service-provider-template=MODULE
 	foosv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/api/crds"
@@ -245,7 +245,7 @@ func main() {
 		os.Exit(1)
 	}
 	clusterAccessManager := clusteraccess.NewClusterAccessManager(platformCluster.Client(),
-		// opencontrolplane-gen:replace fooservice=KIND_LOWER
+		// opencontrolplane-gen:replace foo=KIND_LOWER
 		foosv1alpha1.GroupVersion.Group, os.Getenv("POD_NAMESPACE"))
 	clusterAccessManager.WithLogger(&log).
 		WithInterval(10 * time.Second).
@@ -280,12 +280,12 @@ func main() {
 		}
 
 		spGVK := metav1.GroupVersionKind{
-			// opencontrolplane-gen:replace fooservice=KIND_LOWER
+			// opencontrolplane-gen:replace foo=KIND_LOWER
 			Group: foosv1alpha1.GroupVersion.Group,
-			// opencontrolplane-gen:replace fooservice=KIND_LOWER
+			// opencontrolplane-gen:replace foo=KIND_LOWER
 			Version: foosv1alpha1.GroupVersion.Version,
-			// opencontrolplane-gen:replace FooService=KIND
-			Kind: "FooService",
+			// opencontrolplane-gen:replace Foo=KIND
+			Kind: "Foo",
 		}
 		if err := utils.RegisterGVKsAtServiceProvider(ctx, platformCluster.Client(), providerName, spGVK); err != nil {
 			setupLog.Error(err, "Failed to register GVK at ServiceProvider")
@@ -299,7 +299,7 @@ func main() {
 		{
 			Rules: []rbacv1.PolicyRule{
 				{
-					// opencontrolplane-gen:replace fooservice=KIND_LOWER
+					// opencontrolplane-gen:replace foo=KIND_LOWER
 					APIGroups: []string{foosv1alpha1.GroupVersion.Group},
 					Resources: []string{"*"},
 					Verbs:     []string{"*"},
