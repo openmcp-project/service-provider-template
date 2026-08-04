@@ -83,5 +83,3 @@ tasks:
         if: '{{ eq .dryrun "false" }}'
       - cmd: sed -i '' 's/foo/{{ lower .api }}/g' test/e2e/onboarding/service.yaml
         if: '{{ eq .dryrun "false" }}'
-      - cmd: task generate
-        if: '{{ eq .dryrun "false" }}'
