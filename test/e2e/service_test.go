@@ -29,7 +29,7 @@ func TestServiceProvider(t *testing.T) {
 			}
 			return ctx
 		}).
-		Setup(providers.CreateMCP("test-mcp")).
+		Setup(providers.CreateMCP("test-controlplane")).
 		// opencontrolplane-gen:if SAMPLECODE=true
 		Assess("verify service can be successfully consumed",
 			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
@@ -52,7 +52,7 @@ func TestServiceProvider(t *testing.T) {
 				return ctx
 			},
 		).
-		Assess("verify domain objects can be created", providers.ImportDomainAPIs("test-mcp", "mcp")).
+		Assess("verify domain objects can be created", providers.ImportDomainAPIs("test-controlplane", "controlplane")).
 		Teardown(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
 			onboardingConfig, err := clusterutils.OnboardingConfig()
 			if err != nil {
@@ -70,6 +70,6 @@ func TestServiceProvider(t *testing.T) {
 		// opencontrolplane-gen:if SAMPLECODE=false
 		// TODO add assess steps
 		// opencontrolplane-gen:fi
-		Teardown(providers.DeleteMCP("test-mcp", wait.WithTimeout(5*time.Minute)))
+		Teardown(providers.DeleteMCP("test-controlplane", wait.WithTimeout(5*time.Minute)))
 	testenv.Test(t, basicProviderTest.Feature())
 }
