@@ -55,7 +55,6 @@ tasks:
       dryrun: '{{.dryrun | default "false"}}'
       api: '{{.api | default "Example"}}'
       name: '{{.name | default "example"}}'
-      watch: '{{.watch | default "platform"}}'
       module: '{{.module | default "github.com/openmcp-project/service-provider-example"}}'
       workloadcluster: '{{.workloadcluster | default "false"}}'
       secretwatcher: '{{.secretwatcher | default "false"}}'
