@@ -37,14 +37,15 @@ import (
 	clusteraccess "github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider/clusteraccess"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	apiv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
 )
 
-// opencontrolplane-gen:replace foo=KIND
+// opencontrolplane-gen:replace Foo=KIND
 // FooReconciler reconciles a Foo object
-// opencontrolplane-gen:replace foo=KIND
+// opencontrolplane-gen:replace Foo=KIND
 type FooReconciler struct {
-	// opencontrolplane-gen:replace foo=KIND
+	// opencontrolplane-gen:replace Foo=KIND
 	// OnboardingCluster is the cluster where this controller watches Foo resources and reacts to their changes.
 	OnboardingCluster *clusters.Cluster
 	// PlatformCluster is the cluster where this controller is deployed and configured.
@@ -54,7 +55,7 @@ type FooReconciler struct {
 }
 
 // CreateOrUpdate is called on every add or update event
-// opencontrolplane-gen:replace foo=KIND
+// opencontrolplane-gen:replace Foo=KIND
 func (r *FooReconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.Foo, _ *apiv1alpha1.ProviderConfig, clusters clusteraccess.ClusterContext) (ctrl.Result, error) {
 	// opencontrolplane-gen:if SAMPLECODE=true
 	l := logf.FromContext(ctx)
@@ -65,6 +66,7 @@ func (r *FooReconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.
 		},
 	}
 	if _, err := ctrl.CreateOrUpdate(ctx, clusters.MCPCluster.Client(), managedObj, func() error {
+		// opencontrolplane-gen:replace foo=KIND_LOWER
 		managedObj.Spec = fooCRD().Spec
 		return nil
 	}); err != nil {
@@ -80,11 +82,12 @@ func (r *FooReconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.
 }
 
 // Delete is called on every delete event
-// opencontrolplane-gen:replace foo=KIND_LOWER
+// opencontrolplane-gen:replace Foo=KIND
 func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *apiv1alpha1.ProviderConfig, clusters clusteraccess.ClusterContext) (ctrl.Result, error) {
 	// opencontrolplane-gen:if SAMPLECODE=true
 	l := logf.FromContext(ctx)
 	serviceprovider.StatusTerminating(obj)
+	// opencontrolplane-gen:replace foo=KIND_LOWER
 	managedObj := fooCRD()
 	if err := clusters.MCPCluster.Client().Delete(ctx, managedObj); client.IgnoreNotFound(err) != nil {
 		l.Error(err, "delete object failed")
@@ -93,24 +96,21 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 	if err := clusters.MCPCluster.Client().Get(ctx, client.ObjectKeyFromObject(managedObj), managedObj); err != nil {
 		return reconcile.Result{}, client.IgnoreNotFound(err)
 	}
-	// object still exists
+	// opencontrolplane-gen:fi
+	// opencontrolplane-gen:if SAMPLECODE=false
+	// TODO
+	// opencontrolplane-gen:fi
 	return ctrl.Result{
 		RequeueAfter: time.Second * 10,
 	}, nil
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
-	// TODO
-	return ctrl.Result{}, nil
-	// opencontrolplane-gen:fi
 }
 
 // opencontrolplane-gen:if SECRETWATCHER=true
 // IsReferencedSecret returns true if the given secret should trigger
 // reconciliation. See serviceprovider.SecretWatcher for details.
 //
-// opencontrolplane-gen:replace foo=KIND
-//
-//revive:disable:unused-parameter
+// revive:disable:unused-parameter
+// opencontrolplane-gen:replace Foo=KIND
 func (r *FooReconciler) IsReferencedSecret(ctx context.Context, secret *corev1.Secret, pc *apiv1alpha1.ProviderConfig) bool {
 	if pc == nil {
 		return false
@@ -126,6 +126,7 @@ func (r *FooReconciler) IsReferencedSecret(ctx context.Context, secret *corev1.S
 
 // opencontrolplane-gen:fi
 // opencontrolplane-gen:if SAMPLECODE=true
+// opencontrolplane-gen:replace foo=KIND_LOWER
 func fooCRD() *apiextensionsv1.CustomResourceDefinition {
 	return &apiextensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
