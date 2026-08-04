@@ -18,6 +18,8 @@ limitations under the License.
 // +kubebuilder:object:generate=true
 // opencontrolplane-gen:replace foo=KIND_LOWER
 // +groupName=foo.services.open-control-plane.io
+
+//go:generate opencontrolplane-gen
 package v1alpha1
 
 import (
