@@ -1,6 +1,6 @@
 apiVersion: foo.services.open-control-plane.io/v1alpha1
-kind: ProviderConfig
+kind: Foo
 metadata:
-  name: foo
+  name: test-controlplane
 spec:
-  pollInterval: 1m
+  foo: bar

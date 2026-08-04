@@ -77,3 +77,9 @@ tasks:
         if: '{{ eq .dryrun "false" }}'
       - cmd: sed -i '' 's/service-provider-template/platform-service-{{.name}}/g' Taskfile.yaml
         if: '{{ eq .dryrun "false" }}'
+      - cmd: sed -i '' 's/foo/{{ lower .api }}/g' test/e2e/platform/providerconfig.yaml
+        if: '{{ eq .dryrun "false" }}'
+      - cmd: sed -i '' 's/Foo/{{.api}}/g' test/e2e/onboarding/service.yaml
+        if: '{{ eq .dryrun "false" }}'
+      - cmd: sed -i '' 's/foo/{{ lower .api }}/g' test/e2e/onboarding/service.yaml
+        if: '{{ eq .dryrun "false" }}'
