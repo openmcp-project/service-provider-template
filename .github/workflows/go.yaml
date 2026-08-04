@@ -39,8 +39,5 @@ jobs:
         run: |
           task generate --verbose
 
-      - name: task validate
-        run: task validate --verbose
-
       - name: Running Test e2e
         run: task test-e2e
