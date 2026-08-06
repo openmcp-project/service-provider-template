@@ -88,6 +88,7 @@ func (r *FooReconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.
 	// opencontrolplane-gen:fi
 	// opencontrolplane-gen:if SAMPLECODE=false
 	// TODO
+	_, _, _ = ctx, svcobj, clusters
 	// opencontrolplane-gen:fi
 	return ctrl.Result{}, nil
 }
@@ -110,6 +111,7 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 	// opencontrolplane-gen:fi
 	// opencontrolplane-gen:if SAMPLECODE=false
 	// TODO
+	_, _, _ = ctx, obj, clusters
 	// opencontrolplane-gen:fi
 	return ctrl.Result{
 		RequeueAfter: time.Second * 10,
