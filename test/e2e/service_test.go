@@ -12,9 +12,6 @@ import (
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	// opencontrolplane-gen:fi
 
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
@@ -90,7 +87,7 @@ func TestServiceProvider(t *testing.T) {
 				return ctx
 			},
 		).
-		Assess("verify deletion is blocked due to existing domain service object",
+		Assess("verify provider deletion is blocked due to existing domain service object",
 			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
 				config := c
 				config, err := clusterutils.OnboardingConfig()
@@ -124,7 +121,7 @@ func TestServiceProvider(t *testing.T) {
 				return ctx
 			},
 		).
-		Assess("verify domain objects can be delted",
+		Assess("delete domain object",
 			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
 				mcpConfig, err := clusterutils.MCPConfig(ctx, c, "test-controlplane")
 				if err != nil {
@@ -162,27 +159,6 @@ func TestServiceProvider(t *testing.T) {
 				return ctx
 			},
 		).
-		Teardown(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-			config := c
-			config, err := clusterutils.OnboardingConfig()
-			if err != nil {
-				t.Error(err)
-				return ctx
-			}
-			apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme())
-			// opencontrolplane-gen:replace Foo=KIND
-			api := &apiv1alpha1.Foo{}
-			api.SetName("test-controlplane")
-			api.SetNamespace("default")
-			if err := config.Client().Resources().Delete(ctx, api); err != nil && !apierrors.IsNotFound(err) {
-				// opencontrolplane-gen:replace Foo=KIND
-				t.Errorf("failed to delete Foo object: %v", err)
-			}
-			if err := wait.For(conditions.New(config.Client().Resources()).ResourceDeleted(api)); err != nil {
-				t.Error(err)
-			}
-			return ctx
-		}).
 		// opencontrolplane-gen:fi
 		// opencontrolplane-gen:if SAMPLECODE=false
 		// TODO add assess steps
