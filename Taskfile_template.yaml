@@ -10,31 +10,25 @@ tasks:
     desc: "Execute the template for local development"
     vars:
       debug: '{{.debug | default "false"}}'
-      module: '{{.module | default "github.com/openmcp-project/service-provider-example"}}'
       workloadcluster: '{{.workloadcluster | default "false"}}'
       secretwatcher: '{{.secretwatcher | default "false"}}'
-      samplecode: '{{ .samplecode | default "true"}}'
+      samplecode: '{{ .samplecode | default "false"}}'
     env:
       DEBUG: "{{ .debug }}"
       KIND: "Example"
       KIND_LOWER: "example"
       PROVIDER_NAME: "example"
-      MODULE: "{{ .module }}"
+      MODULE: "github.com/openmcp-project/service-provider-example"
       WORKLOADCLUSTER: "{{ .workloadcluster }}"
       SECRETWATCHER: "{{ .secretwatcher }}"
       SAMPLECODE: "{{ .samplecode }}"
     cmds:
       - go generate ./...
-      - go mod edit -module {{.module}}
+      - go mod edit -module $MODULE
 
   dev:img:
     desc: "Build image for current platform and tag for testing"
     vars:
-      debug: '{{.debug | default "false"}}'
-      module: '{{.module | default "github.com/openmcp-project/service-provider-example"}}'
-      workloadcluster: '{{.workloadcluster | default "false"}}'
-      secretwatcher: '{{.secretwatcher | default "false"}}'
-      samplecode: '{{.samplecode | default "true"}}'
       VERSION:
         sh: $COMMON_SCRIPT_DIR/get-version.sh
       ARCH:
@@ -43,6 +37,7 @@ tasks:
       - task: dev:gen
         vars:
           debug: "{{.debug}}"
+          module: "{{.module}}"
           workloadcluster: "{{.workloadcluster}}"
           secretwatcher: "{{.secretwatcher}}"
           samplecode: "{{.samplecode}}"
@@ -51,24 +46,14 @@ tasks:
 
   dev:e2e:
     desc: "Build image and run e2e tests"
-    vars:
-      debug: '{{.debug | default "false"}}'
-      api: '{{.api | default "Example"}}'
-      module: '{{.module | default "github.com/openmcp-project/service-provider-example"}}'
-      workloadcluster: '{{.workloadcluster | default "false"}}'
-      secretwatcher: '{{.secretwatcher | default "false"}}'
-      samplecode: '{{.samplecode | default "true"}}'
     cmds:
       - task: dev:img
         vars:
           debug: "{{.debug}}"
-          module: '{{.module}}'
+          module: "{{.module}}"
           workloadcluster: "{{.workloadcluster}}"
           secretwatcher: "{{.secretwatcher}}"
           samplecode: "{{.samplecode}}"
-      - "{{.ROOT_DIR}}/hack/common/sed.sh 's/foo/{{ lower .api }}/g' test/e2e/platform/providerconfig.yaml"
-      - "{{.ROOT_DIR}}/hack/common/sed.sh 's/Foo/{{.api}}/g' test/e2e/onboarding/service.yaml"
-      - "{{.ROOT_DIR}}/hack/common/sed.sh 's/foo/{{ lower .api }}/g' test/e2e/onboarding/service.yaml"
       - go test -v ./test/e2e/... -count=1
 
   generate-provider:
