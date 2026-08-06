@@ -28,7 +28,7 @@ A template for building @openmcp-project Service Providers.
 ## Requirements and Setup
 
 1. Create a new repository based on this template.
-2. Run `task generate-provider` to generate your `ServiceProvider`.
+2. Run `task template:generate-provider` to generate your `ServiceProvider`.
 3. Implement your reconciler logic and run the e2e tests.
 
 Code generation is powered by [`opencontrolplane-gen`](https://github.com/openmcp-project/opencontrolplane-gen), which processes `//go:generate opencontrolplane-gen` directives in the source files. Placeholders (e.g. `Foo`, `foo`) are replaced based on environment variables set by the Task targets.
@@ -36,7 +36,7 @@ Code generation is powered by [`opencontrolplane-gen`](https://github.com/openmc
 ### Generate a Service Provider
 
 ```shell
-task generate-provider api=YourKind name=yourname module=github.com/yourorg/yourrepo
+task template:generate-provider api=YourKind name=yourname module=github.com/yourorg/yourrepo
 ```
 
 | Variable          | Description                                       | Default                                               |
@@ -44,19 +44,19 @@ task generate-provider api=YourKind name=yourname module=github.com/yourorg/your
 | `api`             | GVK kind name                                     | `Example`                                             |
 | `name`            | Service provider name (used in folder and tasks)  | `example`                                             |
 | `module`          | Go module path                                    | `github.com/openmcp-project/service-provider-example` |
-| `workloadcluster` | Include workload cluster support                  | `false`                                               |
+| `workloadcluster` | Run on a workload cluster                         | `false`                                               |
 | `secretwatcher`   | Include secret watcher implementation             | `false`                                               |
-| `samplecode`      | Include sample reconciler code                    | `false`                                               |
+| `samplecode`      | Include sample provider code                      | `false`                                               |
 
 To preview the output without writing files, pass `dryrun=true`:
 
 ```shell
-task generate-provider api=YourKind name=yourname module=github.com/yourorg/yourrepo dryrun=true
+task template:generate-provider api=YourKind name=yourname module=github.com/yourorg/yourrepo dryrun=true
 ```
 
 ### Local Development
 
-To generate using `Example` as a placeholder kind and run the full build and e2e test cycle:
+For local development you can run the following command to generate a an example service provider and run the full build and e2e test cycle:
 
 ```shell
 task template:dev:e2e
