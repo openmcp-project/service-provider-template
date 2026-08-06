@@ -12,6 +12,9 @@ import (
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	// opencontrolplane-gen:fi
+	// opencontrolplane-gen:if SAMPLECODE=true
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	// opencontrolplane-gen:fi
 
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
@@ -87,6 +90,78 @@ func TestServiceProvider(t *testing.T) {
 				return ctx
 			},
 		).
+		Assess("verify deletion is blocked due to existing domain service object",
+			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+				config := c
+				config, err := clusterutils.OnboardingConfig()
+				if err != nil {
+					t.Error(err)
+					return ctx
+				}
+				apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme())
+				// opencontrolplane-gen:replace Foo=KIND
+				api := &apiv1alpha1.Foo{}
+				api.SetName("test-controlplane")
+				api.SetNamespace("default")
+				if err := config.Client().Resources().Delete(ctx, api); err != nil {
+					// opencontrolplane-gen:replace Foo=KIND
+					t.Errorf("failed to delete Foo object: %v", err)
+				}
+				// verify object is stuck in Terminating with UserResourcesPresent reason
+				if err := wait.For(func(ctx context.Context) (bool, error) {
+					if err := config.Client().Resources().Get(ctx, api.GetName(), api.GetNamespace(), api); err != nil {
+						return false, nil
+					}
+					for _, c := range api.Status.Conditions {
+						if c.Type == "Ready" && c.Reason == "UserResourcesPresent" {
+							return true, nil
+						}
+					}
+					return false, nil
+				}); err != nil {
+					t.Errorf("expected deletion to be blocked with reason UserResourcesPresent: %v", err)
+				}
+				return ctx
+			},
+		).
+		Assess("verify domain objects can be delted",
+			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+				mcpConfig, err := clusterutils.MCPConfig(ctx, c, "test-controlplane")
+				if err != nil {
+					t.Error(err)
+					return ctx
+				}
+				domainObj := &unstructured.Unstructured{}
+				domainObj.SetName("test-domain-object")
+				domainObj.SetNamespace("default")
+				domainObj.SetAPIVersion("example.domain/v1alpha1")
+				domainObj.SetKind("Foo")
+				if err := mcpConfig.Client().Resources().Delete(ctx, domainObj); err != nil {
+					t.Errorf("failed to create domain object on controlplane: %v", err)
+				}
+				return ctx
+			},
+		).
+		Assess("verify service provider is deleted",
+			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+				config := c
+				config, err := clusterutils.OnboardingConfig()
+				if err != nil {
+					t.Error(err)
+					return ctx
+				}
+				apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme())
+				// opencontrolplane-gen:replace Foo=KIND
+				api := &apiv1alpha1.Foo{}
+				api.SetName("test-controlplane")
+				api.SetNamespace("default")
+				if err := wait.For(conditions.New(config.Client().Resources()).ResourceDeleted(api)); err != nil {
+					// opencontrolplane-gen:replace Foo=KIND
+					t.Errorf("expected Foo to be deleted after domain object removal, but it still exists: %v", err)
+				}
+				return ctx
+			},
+		).
 		Teardown(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
 			config := c
 			config, err := clusterutils.OnboardingConfig()
@@ -99,7 +174,7 @@ func TestServiceProvider(t *testing.T) {
 			api := &apiv1alpha1.Foo{}
 			api.SetName("test-controlplane")
 			api.SetNamespace("default")
-			if err := config.Client().Resources().Delete(ctx, api); err != nil {
+			if err := config.Client().Resources().Delete(ctx, api); err != nil && !apierrors.IsNotFound(err) {
 				// opencontrolplane-gen:replace Foo=KIND
 				t.Errorf("failed to delete Foo object: %v", err)
 			}
