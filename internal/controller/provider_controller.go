@@ -19,6 +19,9 @@ package controller
 
 import (
 	"context"
+	// opencontrolplane-gen:if SAMPLECODE=true
+	"fmt"
+	// opencontrolplane-gen:fi
 	"time"
 
 	// opencontrolplane-gen:if SECRETWATCHER=true
@@ -40,6 +43,12 @@ import (
 	// opencontrolplane-gen:fi
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	// opencontrolplane-gen:fi
+	// opencontrolplane-gen:if SAMPLECODE=true
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	// opencontrolplane-gen:fi
+	// opencontrolplane-gen:if SAMPLECODE=true
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	// opencontrolplane-gen:fi
 
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
@@ -101,6 +110,29 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 	serviceprovider.StatusTerminating(obj)
 	// opencontrolplane-gen:replace foo=KIND_LOWER
 	managedObj := fooCRD()
+	// Check if no instances of the domain service remain on a ControlPlane before deleting the service provider
+	// opencontrolplane-gen:replace foo=KIND_LOWER
+	fooList := &unstructured.UnstructuredList{}
+	// opencontrolplane-gen:replace foo=KIND_LOWER
+	fooList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   managedObj.Spec.Group,
+		Version: managedObj.Spec.Versions[0].Name,
+		Kind:    managedObj.Spec.Names.ListKind,
+	})
+	// opencontrolplane-gen:replace foo=KIND_LOWER
+	if err := clusters.MCPCluster.Client().List(ctx, fooList); err != nil {
+		// opencontrolplane-gen:replace Foo=KIND
+		l.Error(err, "list Foo resources failed")
+		return ctrl.Result{}, err
+	}
+	// opencontrolplane-gen:replace foo=KIND_LOWER
+	if len(fooList.Items) != 0 {
+		// opencontrolplane-gen:replace foo=KIND_LOWER
+		serviceprovider.StatusTerminatingWithReason(obj, "UserResourcesPresent", fmt.Sprintf("user resources still present, kind %s: %d", managedObj.Spec.Names.Kind, len(fooList.Items)))
+		return ctrl.Result{
+			RequeueAfter: time.Second * 10,
+		}, nil
+	}
 	if err := clusters.MCPCluster.Client().Delete(ctx, managedObj); client.IgnoreNotFound(err) != nil {
 		l.Error(err, "delete object failed")
 		return ctrl.Result{}, err
