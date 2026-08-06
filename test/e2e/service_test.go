@@ -12,6 +12,10 @@ import (
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	// opencontrolplane-gen:fi
+
+	// opencontrolplane-gen:if SAMPLECODE=true
+	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
+	// opencontrolplane-gen:fi
 	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
@@ -19,58 +23,88 @@ import (
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/openmcp-testing/pkg/clusterutils"
 	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
-	"github.com/openmcp-project/openmcp-testing/pkg/conditions"
-	// opencontrolplane-gen:fi
 	"github.com/openmcp-project/openmcp-testing/pkg/providers"
-	"github.com/openmcp-project/openmcp-testing/pkg/resources"
+
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
+	apiv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
+	// opencontrolplane-gen:if SAMPLECODE=true
+	openmcpconditions "github.com/openmcp-project/openmcp-testing/pkg/conditions"
+	// opencontrolplane-gen:fi
 )
 
 func TestServiceProvider(t *testing.T) {
-	// opencontrolplane-gen:if SAMPLECODE=true
-	var onboardingList unstructured.UnstructuredList
-	// opencontrolplane-gen:fi
 	basicProviderTest := features.New("provider test").
 		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-			if _, err := resources.CreateObjectsFromDir(ctx, c, "platform"); err != nil {
-				t.Errorf("failed to create platform cluster objects: %v", err)
+			apiv1alpha1.AddToScheme(c.Client().Resources().GetScheme())
+			config := &apiv1alpha1.ProviderConfig{}
+			// opencontrolplane-gen:replace configname=PROVIDER_NAME
+			config.SetName("configname")
+			if err := c.Client().Resources().Create(ctx, config); err != nil {
+				t.Errorf("failed to create ProviderConfig object: %v", err)
 			}
 			return ctx
 		}).
 		Setup(providers.CreateMCP("test-controlplane")).
 		// opencontrolplane-gen:if SAMPLECODE=true
-		Assess("verify service can be successfully consumed",
+		Assess("verify provider can be successfully consumed",
 			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-				onboardingConfig, err := clusterutils.OnboardingConfig()
+				config := c
+				config, err := clusterutils.OnboardingConfig()
 				if err != nil {
 					t.Error(err)
 					return ctx
 				}
-				objList, err := resources.CreateObjectsFromDir(ctx, onboardingConfig, "onboarding")
-				if err != nil {
-					t.Errorf("failed to create onboarding cluster objects: %v", err)
-					return ctx
+				apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme())
+				// opencontrolplane-gen:replace Foo=KIND
+				api := &apiv1alpha1.Foo{}
+				api.SetName("test-controlplane")
+				api.SetNamespace("default")
+				if err := config.Client().Resources().Create(ctx, api); err != nil {
+					// opencontrolplane-gen:replace Foo=KIND
+					t.Errorf("failed to create Foo object: %v", err)
 				}
-				for _, obj := range objList.Items {
-					if err := wait.For(conditions.Match(&obj, onboardingConfig, "Ready", corev1.ConditionTrue)); err != nil {
-						t.Error(err)
-					}
+				if err := wait.For(openmcpconditions.Match(api, config, "Ready", corev1.ConditionTrue)); err != nil {
+					t.Error(err)
 				}
-				objList.DeepCopyInto(&onboardingList)
 				return ctx
 			},
 		).
-		Assess("verify domain objects can be created", providers.ImportDomainAPIs("test-controlplane", "controlplane")).
+		Assess("verify domain objects can be created",
+			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+				mcpConfig, err := clusterutils.MCPConfig(ctx, c, "test-controlplane")
+				if err != nil {
+					t.Error(err)
+					return ctx
+				}
+				domainObj := &unstructured.Unstructured{}
+				domainObj.SetName("test-domain-object")
+				domainObj.SetNamespace("default")
+				domainObj.SetAPIVersion("example.domain/v1alpha1")
+				domainObj.SetKind("Foo")
+				if err := mcpConfig.Client().Resources().Create(ctx, domainObj); err != nil {
+					t.Errorf("failed to create domain object on controlplane: %v", err)
+				}
+				return ctx
+			},
+		).
 		Teardown(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-			onboardingConfig, err := clusterutils.OnboardingConfig()
+			config := c
+			config, err := clusterutils.OnboardingConfig()
 			if err != nil {
 				t.Error(err)
 				return ctx
 			}
-			for _, obj := range onboardingList.Items {
-				if err := resources.DeleteObject(ctx, onboardingConfig, &obj, wait.WithTimeout(time.Minute)); err != nil {
-					t.Errorf("failed to delete onboarding object: %v", err)
-				}
+			apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme())
+			// opencontrolplane-gen:replace Foo=KIND
+			api := &apiv1alpha1.Foo{}
+			api.SetName("test-controlplane")
+			api.SetNamespace("default")
+			if err := config.Client().Resources().Delete(ctx, api); err != nil {
+				// opencontrolplane-gen:replace Foo=KIND
+				t.Errorf("failed to delete Foo object: %v", err)
+			}
+			if err := wait.For(conditions.New(config.Client().Resources()).ResourceDeleted(api)); err != nil {
+				t.Error(err)
 			}
 			return ctx
 		}).

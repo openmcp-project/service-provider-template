@@ -1,6 +1,0 @@
-apiVersion: foo.services.open-control-plane.io/v1alpha1
-kind: Foo
-metadata:
-  name: test-controlplane
-spec:
-  foo: bar
