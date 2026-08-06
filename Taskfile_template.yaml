@@ -98,9 +98,3 @@ tasks:
         if: '{{ eq .dryrun "false" }}'
       - cmd: "{{.ROOT_DIR}}/hack/common/sed.sh 's/service-provider-template/service-provider-{{.name}}/g' Taskfile.yaml"
         if: '{{ eq .dryrun "false" }}'
-      - cmd: "{{.ROOT_DIR}}/hack/common/sed.sh 's/foo/{{ lower .api }}/g' test/e2e/platform/providerconfig.yaml"
-        if: '{{ eq .dryrun "false" }}'
-      - cmd: "{{.ROOT_DIR}}/hack/common/sed.sh 's/Foo/{{.api}}/g' test/e2e/onboarding/service.yaml"
-        if: '{{ eq .dryrun "false" }}'
-      - cmd: "{{.ROOT_DIR}}/hack/common/sed.sh 's/foo/{{ lower .api }}/g' test/e2e/onboarding/service.yaml"
-        if: '{{ eq .dryrun "false" }}'
