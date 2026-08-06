@@ -10,43 +10,61 @@ tasks:
     desc: "Execute the template for local development"
     vars:
       debug: '{{.debug | default "false"}}'
+      module: '{{.module | default "github.com/openmcp-project/service-provider-example"}}'
       workloadcluster: '{{.workloadcluster | default "false"}}'
       secretwatcher: '{{.secretwatcher | default "false"}}'
-      samplecode: '{{ .samplecode | default "false"}}'
+      samplecode: '{{ .samplecode | default "true"}}'
     env:
       DEBUG: "{{ .debug }}"
-      KIND: "ExampleKind"
-      KIND_LOWER: "examplekind"
-      GROUP: "examplegroup"
+      KIND: "Example"
+      KIND_LOWER: "example"
       PROVIDER_NAME: "example"
+      MODULE: "{{ .module }}"
       WORKLOADCLUSTER: "{{ .workloadcluster }}"
       SECRETWATCHER: "{{ .secretwatcher }}"
       SAMPLECODE: "{{ .samplecode }}"
     cmds:
       - go generate ./...
+      - go mod edit -module {{.module}}
 
   dev:img:
     desc: "Build image for current platform and tag for testing"
-    cmds:
-      - task: dev:gen
-        vars:
-          watch: "{{.watch}}"
-      - task: build:img:build
-      - docker tag ghcr.io/openmcp-project/images/{{.COMPONENTS}}:{{.VERSION}}-linux-{{ARCH}} ghcr.io/openmcp-project/images/service-provider-example:{{.VERSION}}
     vars:
+      debug: '{{.debug | default "false"}}'
+      module: '{{.module | default "github.com/openmcp-project/service-provider-example"}}'
+      workloadcluster: '{{.workloadcluster | default "false"}}'
+      secretwatcher: '{{.secretwatcher | default "false"}}'
+      samplecode: '{{.samplecode | default "true"}}'
       VERSION:
         sh: $COMMON_SCRIPT_DIR/get-version.sh
       ARCH:
         sh: uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'
+    cmds:
+      - task: dev:gen
+        vars:
+          debug: "{{.debug}}"
+          workloadcluster: "{{.workloadcluster}}"
+          secretwatcher: "{{.secretwatcher}}"
+          samplecode: "{{.samplecode}}"
+      - task: build:img:build
+      - docker tag ghcr.io/openmcp-project/images/{{.COMPONENTS}}:{{.VERSION}}-linux-{{ARCH}} ghcr.io/openmcp-project/images/service-provider-example:{{.VERSION}}
 
   dev:e2e:
     desc: "Build image and run e2e tests"
     vars:
-      watch: '{{.watch | default "platform"}}'
+      debug: '{{.debug | default "false"}}'
+      module: '{{.module | default "github.com/openmcp-project/service-provider-example"}}'
+      workloadcluster: '{{.workloadcluster | default "false"}}'
+      secretwatcher: '{{.secretwatcher | default "false"}}'
+      samplecode: '{{.samplecode | default "true"}}'
     cmds:
       - task: dev:img
         vars:
-          watch: "{{.watch}}"
+          debug: "{{.debug}}"
+          module: '{{.module}}'
+          workloadcluster: "{{.workloadcluster}}"
+          secretwatcher: "{{.secretwatcher}}"
+          samplecode: "{{.samplecode}}"
       - go test -v ./test/e2e/... -count=1
 
   generate-provider:
