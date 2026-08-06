@@ -6,14 +6,22 @@ import (
 	"testing"
 	"time"
 
+	// opencontrolplane-gen:if SAMPLECODE=true
 	corev1 "k8s.io/api/core/v1"
+	// opencontrolplane-gen:fi
+	// opencontrolplane-gen:if SAMPLECODE=true
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	// opencontrolplane-gen:fi
 	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 
+	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/openmcp-testing/pkg/clusterutils"
+	// opencontrolplane-gen:fi
+	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/openmcp-testing/pkg/conditions"
+	// opencontrolplane-gen:fi
 	"github.com/openmcp-project/openmcp-testing/pkg/providers"
 	"github.com/openmcp-project/openmcp-testing/pkg/resources"
 )
