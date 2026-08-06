@@ -28,44 +28,47 @@ A template for building @openmcp-project Service Providers.
 ## Requirements and Setup
 
 1. Create a new repository based on this template.
-2. Execute the template to create a new `ServiceProvider`.
-3. Test your `ServiceProvider`.
+2. Run `task generate-provider` to generate your `ServiceProvider`.
+3. Implement your reconciler logic and run the e2e tests.
 
-The template includes a basic code generation command that lets you create a `ServiceProvider` for your Go module, API kind and group.
-You can also choose to add sample code to get a fully functional `ServiceProvider`.
+Code generation is powered by [`opencontrolplane-gen`](https://github.com/openmcp-project/opencontrolplane-gen), which processes `//go:generate opencontrolplane-gen` directives in the source files. Placeholders (e.g. `Foo`, `foo`) are replaced based on environment variables set by the Task targets.
 
-For a complete usage overview with the default settings, run:
+### Generate a Service Provider
 
 ```shell
-go run ./cmd/template -h
+task generate-provider api=YourKind name=yourname module=github.com/yourorg/yourrepo
 ```
 
-Then execute the template, for example:
+| Variable          | Description                                       | Default                                               |
+|-------------------|---------------------------------------------------|-------------------------------------------------------|
+| `api`             | GVK kind name                                     | `Example`                                             |
+| `name`            | Service provider name (used in folder and tasks)  | `example`                                             |
+| `module`          | Go module path                                    | `github.com/openmcp-project/service-provider-example` |
+| `workloadcluster` | Include workload cluster support                  | `false`                                               |
+| `secretwatcher`   | Include secret watcher implementation             | `false`                                               |
+| `samplecode`      | Include sample reconciler code                    | `false`                                               |
+
+To preview the output without writing files, pass `dryrun=true`:
 
 ```shell
-go run ./cmd/template -module github.com/yourorg/yourrepo -kind YourKind -group yourgroup
+task generate-provider api=YourKind name=yourname module=github.com/yourorg/yourrepo dryrun=true
 ```
 
-Running End-to-End tests:
+### Local Development
+
+To generate using `Example` as a placeholder kind and run the full build and e2e test cycle:
 
 ```shell
-task test-e2e
+task template:dev:e2e
+```
+
+You can pass the same variables as above to customize the local build:
+
+```shell
+task template:dev:e2e samplecode=true workloadcluster=true
 ```
 
 For a detailed guide on setup and usage, please refer to the full [Service Provider Development Guide](https://openmcp-project.github.io/docs/developers/serviceprovider/service-providers).
-
-## CLI Flags
-
-### Template Generator Flags
-
-The template generator (`cmd/template`) supports the following flags:
-
-- `-module`: Go module path (default: `github.com/openmcp-project/service-provider-template`)
-- `-kind`: GVK kind name (default: `FooService`)
-- `-group`: GVK group prefix, will be suffixed with `services.open-control-plane.io` (default: `foo`)
-- `-v`: Generate with sample code (default: `false`)
-- `-w`: Generate a service provider that reconciles its `DomainServiceAPI` on the [WorkloadCluster](https://openmcp-project.github.io/docs/about/design/service-provider#deployment-model) (default: `false`)
-- `-s`: Generate secret watcher implementation (default: `false`)
 
 ### Service Provider Runtime Flags
 
