@@ -28,16 +28,30 @@ A template for building @openmcp-project Service Providers.
 ## Requirements and Setup
 
 1. Create a new repository based on this template.
-2. Run `task template:generate-provider` to generate your `ServiceProvider`.
-3. Implement your reconciler logic and run the e2e tests.
+2. Install opencontrolplane-gen.
+3. Run `task template:generate-provider` to generate your `ServiceProvider`.
+4. Implement your reconciler logic and run the e2e tests.
 
 Code generation is powered by [`opencontrolplane-gen`](https://github.com/openmcp-project/opencontrolplane-gen), which processes `//go:generate opencontrolplane-gen` directives in the source files. Placeholders (e.g. `Foo`, `foo`) are replaced based on environment variables set by the Task targets.
 
-### Generate a Service Provider
+## Template Taskfiles
+
+This template contains two Taskfiles:
+
+- Taskfile.yaml contains the tasks to use once you created a Service Provider based on this template.
+- Taskfile_template.yaml contains the tasks to use while working with the template. This Taskfile can be removed once you used this template to create a Service Provider.
+
+The following sections give a brief overview of the template specific tasks.
+
+### User tasks
+
+To generate a Service Provider, use `task template:generate-provider`:
 
 ```shell
 task template:generate-provider api=YourKind name=yourname module=github.com/yourorg/yourrepo
 ```
+
+The following options are available:
 
 | Variable          | Description                                       | Default                                               |
 |-------------------|---------------------------------------------------|-------------------------------------------------------|
@@ -47,28 +61,30 @@ task template:generate-provider api=YourKind name=yourname module=github.com/you
 | `workloadcluster` | Run on a workload cluster                         | `false`                                               |
 | `secretwatcher`   | Include secret watcher implementation             | `false`                                               |
 | `samplecode`      | Include sample provider code                      | `false`                                               |
+| `dryrun`          | Preview the output without writing files          | `false`                                               |
 
-To preview the output without writing files, pass `dryrun=true`:
-
-```shell
-task template:generate-provider api=YourKind name=yourname module=github.com/yourorg/yourrepo dryrun=true
-```
-
-### Local Development
-
-For local development you can run the following command to generate a an example service provider and run the full build and e2e test cycle:
+Then you can run the e2e test to verify that the template rendered a working Service Provider:
 
 ```shell
-task template:dev:e2e
-```
-
-You can pass the same variables as above to customize the local build:
-
-```shell
-task template:dev:e2e samplecode=true workloadcluster=true
+task test-e2e
 ```
 
 For a detailed guide on setup and usage, please refer to the full [Service Provider Development Guide](https://openmcp-project.github.io/docs/developers/serviceprovider/service-providers).
+
+### Template Development
+
+The following tasks are useful to test any template code changes.
+
+- `template:dev:gen`: Executes the template with the default values to render "service-provider-example" for local development.
+- `template:dev:img`: Builds a container image for "service-provider-example". This also includes code validating.
+- `template:dev:e2e`: Executes e2e tests for "service-provider-example".
+
+All `template:dev` tasks support the following arguments:
+
+- `debug`: enables debug logs of [opencontrolplane-gen](https://github.com/openmcp-project/opencontrolplane-gen).
+- `workloadcluster`: Run on a workload cluster.
+- `secretwatcher`: Include secret watcher implementation.
+- `samplecode`: Include sample provider code.
 
 ### Service Provider Runtime Flags
 
