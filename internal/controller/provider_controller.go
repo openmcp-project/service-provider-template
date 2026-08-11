@@ -27,11 +27,12 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	// opencontrolplane-gen:if SAMPLECODE=true
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	// opencontrolplane-gen:fi
 
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
