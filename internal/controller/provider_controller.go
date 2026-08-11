@@ -28,17 +28,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	// opencontrolplane-gen:if SAMPLECODE=true
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// opencontrolplane-gen:if SAMPLECODE=true
-	// opencontrolplane-gen:if SAMPLECODE=true
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	// opencontrolplane-gen:fi
 
