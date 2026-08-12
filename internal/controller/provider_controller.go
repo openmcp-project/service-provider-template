@@ -75,7 +75,6 @@ func (r *FooReconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.
 		},
 	}
 	if _, err := ctrl.CreateOrUpdate(ctx, clusters.MCPCluster.Client(), managedObj, func() error {
-		// opencontrolplane-gen:replace foo=KIND_LOWER
 		managedObj.Spec = fooCRD().Spec
 		return nil
 	}); err != nil {
@@ -97,7 +96,6 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 	// opencontrolplane-gen:if SAMPLECODE=true
 	l := logf.FromContext(ctx)
 	serviceprovider.StatusTerminating(obj)
-	// opencontrolplane-gen:replace foo=KIND_LOWER
 	managedObj := fooCRD()
 	// Check if no custom resource objects related to the managed domain service CRD remain on a ControlPlane before deleting the service provider
 	fooList := &unstructured.UnstructuredList{}
@@ -167,7 +165,6 @@ func (r *FooReconciler) IsReferencedSecret(ctx context.Context, secret *corev1.S
 
 // opencontrolplane-gen:fi
 // opencontrolplane-gen:if SAMPLECODE=true
-// opencontrolplane-gen:replace foo=KIND_LOWER
 func fooCRD() *apiextensionsv1.CustomResourceDefinition {
 	return &apiextensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
