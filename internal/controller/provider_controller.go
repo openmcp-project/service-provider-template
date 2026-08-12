@@ -70,7 +70,6 @@ func (r *FooReconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.
 		},
 	}
 	if _, err := ctrl.CreateOrUpdate(ctx, clusters.MCPCluster.Client(), managedObj, func() error {
-		// opencontrolplane-gen:replace foo=KIND_LOWER
 		managedObj.Spec = fooCRD().Spec
 		return nil
 	}); err != nil {
@@ -92,7 +91,6 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 	// opencontrolplane-gen:if SAMPLECODE=true
 	l := logf.FromContext(ctx)
 	serviceprovider.StatusTerminating(obj)
-	// opencontrolplane-gen:replace foo=KIND_LOWER
 	managedObj := fooCRD()
 	if err := clusters.MCPCluster.Client().Delete(ctx, managedObj); client.IgnoreNotFound(err) != nil {
 		l.Error(err, "delete object failed")
