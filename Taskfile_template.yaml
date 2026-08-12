@@ -32,7 +32,7 @@ tasks:
       VERSION:
         sh: $COMMON_SCRIPT_DIR/get-version.sh
       ARCH:
-        sh: uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'
+        sh: uname -m | {{.ROOT_DIR}}/hack/common/sed.sh 's/x86_64/amd64/;s/aarch64/arm64/'
     cmds:
       - task: dev:gen
         vars:
