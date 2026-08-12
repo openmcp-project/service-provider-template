@@ -8,12 +8,8 @@ import (
 
 	// opencontrolplane-gen:if SAMPLECODE=true
 	corev1 "k8s.io/api/core/v1"
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	// opencontrolplane-gen:fi
 
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	// opencontrolplane-gen:fi
 	"sigs.k8s.io/e2e-framework/klient/wait"

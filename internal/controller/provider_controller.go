@@ -19,38 +19,25 @@ package controller
 
 import (
 	"context"
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"fmt"
-	// opencontrolplane-gen:fi
+	// opencontrolplane-gen:if SAMPLECODE=true
 	"time"
-
+	// opencontrolplane-gen:fi
 	// opencontrolplane-gen:if SECRETWATCHER=true
 	corev1 "k8s.io/api/core/v1"
 	// opencontrolplane-gen:fi
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	// opencontrolplane-gen:if SAMPLECODE=true
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// opencontrolplane-gen:if SAMPLECODE=true
-	// opencontrolplane-gen:if SAMPLECODE=true
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	// opencontrolplane-gen:fi
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	// opencontrolplane-gen:fi
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider"
@@ -135,13 +122,16 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 	if err := clusters.MCPCluster.Client().Get(ctx, client.ObjectKeyFromObject(managedObj), managedObj); err != nil {
 		return reconcile.Result{}, client.IgnoreNotFound(err)
 	}
+	// object still exists
 	// opencontrolplane-gen:fi
 	// opencontrolplane-gen:if SAMPLECODE=false
 	// TODO
 	_, _, _ = ctx, obj, clusters
 	// opencontrolplane-gen:fi
 	return ctrl.Result{
+		// opencontrolplane-gen:if SAMPLECODE=true
 		RequeueAfter: time.Second * 10,
+		// opencontrolplane-gen:fi
 	}, nil
 }
 
