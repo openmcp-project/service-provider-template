@@ -84,7 +84,7 @@ func TestServiceProvider(t *testing.T) {
 				return ctx
 			},
 		).
-		Assess("verify provider deletion is blocked due to existing domain service object",
+		Assess("verify service deletion is blocked due to existing domain service object",
 			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
 				config := c
 				config, err := clusterutils.OnboardingConfig()
@@ -106,7 +106,7 @@ func TestServiceProvider(t *testing.T) {
 					if err := config.Client().Resources().Get(ctx, api.GetName(), api.GetNamespace(), api); err != nil {
 						return false, nil
 					}
-					if c := meta.FindStatusCondition(api.Status.Conditions, "Ready"); c != nil && c.Reason == "UserResourcesPresent" {
+					if c := meta.FindStatusCondition(api.Status.Conditions, "DeletionBlocked"); c != nil && c.Status == metav1.ConditionTrue {
 						return true, nil
 					}
 					return false, nil
@@ -134,7 +134,7 @@ func TestServiceProvider(t *testing.T) {
 				return ctx
 			},
 		).
-		Assess("verify service provider is deleted",
+		Assess("verify service is deleted",
 			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
 				config := c
 				config, err := clusterutils.OnboardingConfig()

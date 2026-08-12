@@ -105,7 +105,6 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 		Kind:    managedObj.Spec.Names.ListKind,
 	})
 	if err := clusters.MCPCluster.Client().List(ctx, fooList); err != nil {
-		// opencontrolplane-gen:replace Foo=KIND
 		l.Error(err, "list Foo resources failed")
 		return ctrl.Result{}, err
 	}
