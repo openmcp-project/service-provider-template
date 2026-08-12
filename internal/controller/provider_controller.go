@@ -19,8 +19,9 @@ package controller
 
 import (
 	"context"
+	// opencontrolplane-gen:if SAMPLECODE=true
 	"time"
-
+	// opencontrolplane-gen:fi
 	// opencontrolplane-gen:if SECRETWATCHER=true
 	corev1 "k8s.io/api/core/v1"
 	// opencontrolplane-gen:fi
@@ -34,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	// opencontrolplane-gen:fi
-
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider"
@@ -101,13 +101,16 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 	if err := clusters.MCPCluster.Client().Get(ctx, client.ObjectKeyFromObject(managedObj), managedObj); err != nil {
 		return reconcile.Result{}, client.IgnoreNotFound(err)
 	}
+	// object still exists
 	// opencontrolplane-gen:fi
 	// opencontrolplane-gen:if SAMPLECODE=false
 	// TODO
 	_, _, _ = ctx, obj, clusters
 	// opencontrolplane-gen:fi
 	return ctrl.Result{
+		// opencontrolplane-gen:if SAMPLECODE=true
 		RequeueAfter: time.Second * 10,
+		// opencontrolplane-gen:fi
 	}, nil
 }
 
