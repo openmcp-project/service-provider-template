@@ -135,7 +135,6 @@ func (r *FooReconciler) IsReferencedSecret(ctx context.Context, secret *corev1.S
 
 // opencontrolplane-gen:fi
 // opencontrolplane-gen:if SAMPLECODE=true
-// opencontrolplane-gen:replace foo=KIND_LOWER
 func fooCRD() *apiextensionsv1.CustomResourceDefinition {
 	return &apiextensionsv1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
