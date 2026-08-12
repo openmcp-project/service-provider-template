@@ -109,10 +109,8 @@ func TestServiceProvider(t *testing.T) {
 					if err := config.Client().Resources().Get(ctx, api.GetName(), api.GetNamespace(), api); err != nil {
 						return false, nil
 					}
-					for _, c := range api.Status.Conditions {
-						if c.Type == "Ready" && c.Reason == "UserResourcesPresent" {
-							return true, nil
-						}
+					if c := meta.FindStatusCondition(api.Status.Conditions, "Ready"); c != nil && c.Reason == "UserResourcesPresent" {
+						return true, nil
 					}
 					return false, nil
 				}); err != nil {

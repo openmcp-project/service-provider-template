@@ -110,24 +110,19 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 	serviceprovider.StatusTerminating(obj)
 	// opencontrolplane-gen:replace foo=KIND_LOWER
 	managedObj := fooCRD()
-	// Check if no instances of the domain service remain on a ControlPlane before deleting the service provider
-	// opencontrolplane-gen:replace foo=KIND_LOWER
+	// Check if no custom resource objects related to the managed domain service CRD remain on a ControlPlane before deleting the service provider
 	fooList := &unstructured.UnstructuredList{}
-	// opencontrolplane-gen:replace foo=KIND_LOWER
 	fooList.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   managedObj.Spec.Group,
 		Version: managedObj.Spec.Versions[0].Name,
 		Kind:    managedObj.Spec.Names.ListKind,
 	})
-	// opencontrolplane-gen:replace foo=KIND_LOWER
 	if err := clusters.MCPCluster.Client().List(ctx, fooList); err != nil {
 		// opencontrolplane-gen:replace Foo=KIND
 		l.Error(err, "list Foo resources failed")
 		return ctrl.Result{}, err
 	}
-	// opencontrolplane-gen:replace foo=KIND_LOWER
 	if len(fooList.Items) != 0 {
-		// opencontrolplane-gen:replace foo=KIND_LOWER
 		serviceprovider.StatusTerminatingWithReason(obj, "UserResourcesPresent", fmt.Sprintf("user resources still present, kind %s: %d", managedObj.Spec.Names.Kind, len(fooList.Items)))
 		return ctrl.Result{
 			RequeueAfter: time.Second * 10,
