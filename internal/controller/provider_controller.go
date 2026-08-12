@@ -31,6 +31,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	// opencontrolplane-gen:if SAMPLECODE=true
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -111,7 +112,16 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 		return ctrl.Result{}, err
 	}
 	if len(fooList.Items) != 0 {
-		serviceprovider.StatusTerminatingWithReason(obj, "UserResourcesPresent", fmt.Sprintf("user resources still present, kind %s: %d", managedObj.Spec.Names.Kind, len(fooList.Items)))
+		meta.SetStatusCondition(obj.GetConditions(), metav1.Condition{
+			Type:               "DeletionBlocked",
+			Status:             metav1.ConditionTrue,
+			ObservedGeneration: obj.GetGeneration(),
+			Reason:             "UserResourcesPresent",
+			Message:            fmt.Sprintf("user resources still present, kind %s: %d", managedObj.Spec.Names.Kind, len(fooList.Items)),
+		})
+		obj.SetObservedGeneration(obj.GetGeneration())
+		obj.SetPhase("Terminating")
+
 		return ctrl.Result{
 			RequeueAfter: time.Second * 10,
 		}, nil
