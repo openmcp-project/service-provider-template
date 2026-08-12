@@ -105,8 +105,10 @@ func (r *FooReconciler) Delete(ctx context.Context, obj *apiv1alpha1.Foo, _ *api
 		Kind:    managedObj.Spec.Names.ListKind,
 	})
 	if err := clusters.MCPCluster.Client().List(ctx, fooList); err != nil {
-		l.Error(err, "list Foo resources failed")
-		return ctrl.Result{}, err
+		if !meta.IsNoMatchError(err) {
+			l.Error(err, "list Foo resources failed")
+			return ctrl.Result{}, err
+		}
 	}
 	if len(fooList.Items) != 0 {
 		meta.SetStatusCondition(obj.GetConditions(), metav1.Condition{
