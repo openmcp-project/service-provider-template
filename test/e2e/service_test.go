@@ -155,27 +155,6 @@ func TestServiceProvider(t *testing.T) {
 				return ctx
 			},
 		).
-		Teardown(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-			config := c
-			config, err := clusterutils.OnboardingConfig()
-			if err != nil {
-				t.Error(err)
-				return ctx
-			}
-			apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme())
-			// opencontrolplane-gen:replace Foo=KIND
-			api := &apiv1alpha1.Foo{}
-			api.SetName("test-controlplane")
-			api.SetNamespace("default")
-			if err := config.Client().Resources().Delete(ctx, api); err != nil {
-				// opencontrolplane-gen:replace Foo=KIND
-				t.Errorf("failed to delete Foo object: %v", err)
-			}
-			if err := wait.For(conditions.New(config.Client().Resources()).ResourceDeleted(api)); err != nil {
-				t.Error(err)
-			}
-			return ctx
-		}).
 		// opencontrolplane-gen:fi
 		// opencontrolplane-gen:if SAMPLECODE=false
 		// TODO add assess steps
