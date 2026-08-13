@@ -19,10 +19,11 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	// opencontrolplane-gen:if SAMPLECODE=true
+	"fmt"
 	"time"
+
 	// opencontrolplane-gen:fi
 	// opencontrolplane-gen:if SECRETWATCHER=true
 	corev1 "k8s.io/api/core/v1"
