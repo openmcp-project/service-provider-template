@@ -398,7 +398,8 @@ func (o *RunOptions) Run(ctx context.Context) error {
 		AdvancedClusterAccessReconciler(clusterAccessReconciler).
 		MustBuild()
 	if err := spr.SetupWithManager(mgr, o.ProviderName); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "{{.Kind}}")
+		// opencontrolplane-gen:replace foo=PROVIDER_NAME
+		setupLog.Error(err, "unable to create controller", "controller", "foo")
 		os.Exit(1)
 	}
 
