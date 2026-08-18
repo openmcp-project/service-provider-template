@@ -6,34 +6,34 @@ import (
 	"testing"
 	"time"
 
-	// opencontrolplane-gen:if SAMPLECODE=true
 	corev1 "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/runtime"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
-	// opencontrolplane-gen:fi
+
 	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/openmcp-testing/pkg/clusterutils"
-	// opencontrolplane-gen:fi
+	"github.com/openmcp-project/openmcp-testing/pkg/clusterutils/apiserver"
 	"github.com/openmcp-project/openmcp-testing/pkg/providers"
 
+	openmcpconditions "github.com/openmcp-project/openmcp-testing/pkg/conditions"
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	apiv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
-	// opencontrolplane-gen:if SAMPLECODE=true
-	openmcpconditions "github.com/openmcp-project/openmcp-testing/pkg/conditions"
-	// opencontrolplane-gen:fi
 )
 
 func TestServiceProvider(t *testing.T) {
 	basicProviderTest := features.New("provider test").
 		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-			apiv1alpha1.AddToScheme(c.Client().Resources().GetScheme())
+			runtime.Must(apiv1alpha1.AddToScheme(c.Client().Resources().GetScheme()))
 			config := &apiv1alpha1.ProviderConfig{}
 			// opencontrolplane-gen:replace configname=PROVIDER_NAME
 			config.SetName("configname")
@@ -43,16 +43,18 @@ func TestServiceProvider(t *testing.T) {
 			return ctx
 		}).
 		Setup(providers.CreateMCP("test-controlplane")).
+		// opencontrolplane-gen:if WEBHOOK=true
+		Setup(prepareWebhookExecution()).
+		// opencontrolplane-gen:fi
 		// opencontrolplane-gen:if SAMPLECODE=true
 		Assess("verify provider can be successfully consumed",
 			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-				config := c
 				config, err := clusterutils.OnboardingConfig()
 				if err != nil {
 					t.Error(err)
 					return ctx
 				}
-				apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme())
+				runtime.Must(apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme()))
 				// opencontrolplane-gen:replace Foo=KIND
 				api := &apiv1alpha1.Foo{}
 				api.SetName("test-controlplane")
@@ -87,13 +89,12 @@ func TestServiceProvider(t *testing.T) {
 		).
 		Assess("verify service deletion is blocked due to existing domain service object",
 			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-				config := c
 				config, err := clusterutils.OnboardingConfig()
 				if err != nil {
 					t.Error(err)
 					return ctx
 				}
-				apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme())
+				runtime.Must(apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme()))
 				// opencontrolplane-gen:replace Foo=KIND
 				api := &apiv1alpha1.Foo{}
 				api.SetName("test-controlplane")
@@ -137,13 +138,12 @@ func TestServiceProvider(t *testing.T) {
 		).
 		Assess("verify service is deleted",
 			func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-				config := c
 				config, err := clusterutils.OnboardingConfig()
 				if err != nil {
 					t.Error(err)
 					return ctx
 				}
-				apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme())
+				runtime.Must(apiv1alpha1.AddToScheme(config.Client().Resources().GetScheme()))
 				// opencontrolplane-gen:replace Foo=KIND
 				api := &apiv1alpha1.Foo{}
 				api.SetName("test-controlplane")
@@ -162,3 +162,68 @@ func TestServiceProvider(t *testing.T) {
 		Teardown(providers.DeleteMCP("test-controlplane", wait.WithTimeout(5*time.Minute)))
 	testenv.Test(t, basicProviderTest.Feature())
 }
+
+// opencontrolplane-gen:if WEBHOOK=true
+// prepareWebhookExecution updates the onboarding cluster kube-apiserver to resolve the platform cluster gateway IP when calling the service provider webhook.
+func prepareWebhookExecution() features.Func {
+	return func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+		runtime.Must(gatewayv1.Install(c.Client().Resources().GetScheme()))
+		runtime.Must(gatewayv1alpha2.Install(c.Client().Resources().GetScheme()))
+		gwIP := getGatewayIP(ctx, t, c, "default", "openmcp-system")
+		// opencontrolplane-gen:replace foo=PROVIDER_NAME
+		wbHostname := getHostname(ctx, t, c, "foo-webhook", "openmcp-system")
+		updater, err := apiserver.NewUpdater()
+		if err != nil {
+			t.Fatalf("failed to create api-server updater: %v", err)
+		}
+		if err := updater.AddHostAlias(wbHostname, gwIP); err != nil {
+			t.Fatalf("failed to add host to kube-apiserver: %v", err)
+		}
+		return ctx
+	}
+}
+
+// getHostname retrieves the first hostname defined in the TLSRoute with the given name and namespace.
+func getHostname(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
+	t.Helper()
+	tlsRoute := &gatewayv1alpha2.TLSRoute{}
+	tlsRoute.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1alpha2",
+		Kind:    "TLSRoute",
+	})
+	tlsRoute.SetName(name)
+	tlsRoute.SetNamespace(namespace)
+	if err := config.Client().Resources().Get(ctx, name, namespace, tlsRoute); err != nil {
+		t.Fatalf("failed to get TLSRoute '%s/%s': %v", namespace, name, err)
+	}
+	if len(tlsRoute.Spec.Hostnames) == 0 {
+		t.Fatalf("TLSRoute '%s/%s' does not have any hostnames defined", namespace, name)
+	}
+	return string(tlsRoute.Spec.Hostnames[0])
+}
+
+// getGatewayIP retrieves the first IP address of the Gateway with the given name and namespace.
+func getGatewayIP(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
+	t.Helper()
+	gateway := &gatewayv1.Gateway{}
+	gateway.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1",
+		Kind:    "Gateway",
+	})
+	gateway.SetName(name)
+	gateway.SetNamespace(namespace)
+	if err := config.Client().Resources().Get(ctx, name, namespace, gateway); err != nil {
+		t.Fatalf("failed to get Gateway '%s/%s': %v", namespace, name, err)
+	}
+	for _, addr := range gateway.Status.Addresses {
+		if addr.Type != nil && *addr.Type == gatewayv1.IPAddressType {
+			return addr.Value
+		}
+	}
+	t.Fatalf("Gateway '%s/%s' does not have any IP addresses exposed", namespace, name)
+	return ""
+}
+
+// opencontrolplane-gen:fi

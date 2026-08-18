@@ -56,12 +56,13 @@ The following options are available:
 | Variable          | Description                                       | Default                                               |
 |-------------------|---------------------------------------------------|-------------------------------------------------------|
 | `api`             | GVK kind name                                     | `Example`                                             |
-| `name`            | Service provider name (used in folder and tasks)  | `example`                                             |
+| `dryrun`          | Preview the output without writing files          | `false`                                               |
 | `module`          | Go module path                                    | `github.com/openmcp-project/service-provider-example` |
-| `workloadcluster` | Run on a workload cluster                         | `false`                                               |
+| `name`            | Service provider name (used in folder and tasks)  | `example`                                             |
 | `secretwatcher`   | Include secret watcher implementation             | `false`                                               |
 | `samplecode`      | Include sample provider code                      | `false`                                               |
-| `dryrun`          | Preview the output without writing files          | `false`                                               |
+| `webhook`         | Include sample webhook code                       | `false`                                               |
+| `workloadcluster` | Run on a workload cluster                         | `false`                                               |
 
 Then you can run the e2e test to verify that the template rendered a working Service Provider:
 

@@ -53,6 +53,8 @@ type FooStatus struct {
 // Foo is the Schema for the foos API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// opencontrolplane-gen:replace foo=KIND_LOWER
+// +kubebuilder:resource:path=foos
 // +kubebuilder:printcolumn:JSONPath=`.status.phase`,name="Phase",type=string
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:metadata:labels="openmcp.cloud/cluster=onboarding"

@@ -4,6 +4,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -23,7 +24,7 @@ const (
 func NewServiceServiceCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		// opencontrolplane-gen:replace template=PROVIDER_NAME
-		Use:     "service-provider-template",
+		Use: "service-provider-template",
 	}
 	cmd.SetOut(os.Stdout)
 	cmd.SetErr(os.Stderr)
@@ -86,4 +87,9 @@ func (o *SharedOptions) Complete() error {
 	}
 
 	return nil
+}
+
+func envFlagEnabled(key string) bool {
+	v := strings.ToLower(os.Getenv(key))
+	return v == "1" || v == "true"
 }
