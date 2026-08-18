@@ -7,11 +7,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
 	"github.com/openmcp-project/controller-utils/pkg/logging"
@@ -23,13 +21,10 @@ import (
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess"
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess/advanced"
 	"github.com/openmcp-project/openmcp-operator/lib/utils"
-	"github.com/openmcp-project/service-provider-template/api/providerscheme"
-	"github.com/openmcp-project/service-provider-template/api/v1alpha1"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -37,14 +32,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
+	"github.com/openmcp-project/service-provider-template/api/providerscheme"
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
+	"github.com/openmcp-project/service-provider-template/api/v1alpha1"
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/internal/controller"
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE foo=KIND_LOWER
+	foowebhook "github.com/openmcp-project/service-provider-template/internal/webhook"
 )
 
 var setupLog logging.Logger
-
-const (
-	debugEnvVar = "DEV_DEBUG"
-)
 
 func NewRunCommand(so *SharedOptions) *cobra.Command {
 	opts := &RunOptions{
@@ -250,7 +247,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 			},
 		},
 	}
-	onboardingCluster, err := requestOnboardingClusterAccess(ctx, clusterAccessManager, o.PlatformCluster, onboardingScheme, onboardingClusterPermissions, o.ProviderName)
+	onboardingCluster, err := requestOnboardingClusterAccess(ctx, clusterAccessManager, o.PlatformCluster, onboardingScheme, onboardingClusterPermissions, o.ProviderName, appRun)
 	if err != nil {
 		return fmt.Errorf("error creating/updating onboarding cluster: %w", err)
 	}
@@ -353,7 +350,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 	// opencontrolplane-gen:fi
 
 	clusterAccessReconciler := advanced.NewClusterAccessReconciler(o.PlatformCluster.Client(), o.ProviderName)
-	if debugEnabled() {
+	if envFlagEnabled(debugEnvVar) {
 		// opencontrolplane-gen:if WORKLOADCLUSTER=true
 		clusterAccessReconciler = localaccess.NewLocalAdvancedClusterAccessReconciler(clusterAccessReconciler, localaccess.WithWorkloadCluster())
 		// opencontrolplane-gen:fi
@@ -376,11 +373,11 @@ func (o *RunOptions) Run(ctx context.Context) error {
 		// opencontrolplane-gen:fi
 		WithRetryInterval(10 * time.Second)
 
-	// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
+	// opencontrolplane-gen:replace Foo=KIND
 	spr := serviceprovider.NewAPIReconcilerBuilder[*v1alpha1.Foo, *v1alpha1.ProviderConfig]().
-		// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
+		// opencontrolplane-gen:replace Foo=KIND
 		EmptyObjectProvider(func() *v1alpha1.Foo { return &v1alpha1.Foo{} }).
-		// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
+		// opencontrolplane-gen:replace Foo=KIND
 		EmptyConfigProvider(func() *v1alpha1.ProviderConfig { return &v1alpha1.ProviderConfig{} }).
 		PlatformCluster(o.PlatformCluster).
 		OnboardingCluster(onboardingCluster).
@@ -396,8 +393,14 @@ func (o *RunOptions) Run(ctx context.Context) error {
 		AdvancedClusterAccessReconciler(clusterAccessReconciler).
 		MustBuild()
 	if err := spr.SetupWithManager(mgr, o.ProviderName); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "{{.Kind}}")
+		// opencontrolplane-gen:replace foo=PROVIDER_NAME
+		setupLog.Error(err, "unable to create controller", "controller", "foo")
 		os.Exit(1)
+	}
+
+	// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
+	if err := foowebhook.SetupFooWebhookWithManager(ctx, mgr); err != nil {
+		return fmt.Errorf("unable to setup Example webhook: %w", err)
 	}
 
 	if o.MetricsCertWatcher != nil {
@@ -428,35 +431,3 @@ func (o *RunOptions) Run(ctx context.Context) error {
 
 	return nil
 }
-
-// opencontrolplane-gen:if WATCH=onboarding
-func requestOnboardingClusterAccess(ctx context.Context, mgr clusteraccess.Manager, platformCluster *clusters.Cluster, onboardingScheme *runtime.Scheme, permissions []clustersv1alpha1.PermissionsRequest, providerName string) (*clusters.Cluster, error) {
-	cluster, err := mgr.CreateAndWaitForCluster(ctx, "onboarding-run", clustersv1alpha1.PURPOSE_ONBOARDING, onboardingScheme, permissions)
-	if err != nil {
-		return cluster, err
-	}
-	if debugEnabled() {
-		return patchOnboardingClient(ctx, platformCluster, cluster, providerName)
-	}
-	return cluster, nil
-}
-
-func patchOnboardingClient(ctx context.Context, platformCluster *clusters.Cluster, onboardingCluster *clusters.Cluster, providerName string) (*clusters.Cluster, error) {
-	onboardingAr := &clustersv1alpha1.AccessRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusteraccess.StableRequestNameFromLocalName(providerName, "onboarding-run"),
-			Namespace: os.Getenv("POD_NAMESPACE"),
-		},
-	}
-	if err := platformCluster.Client().Get(ctx, client.ObjectKeyFromObject(onboardingAr), onboardingAr); err != nil {
-		return onboardingCluster, err
-	}
-	return localaccess.MustPatchClusterClient(ctx, onboardingAr, onboardingCluster), nil
-}
-
-func debugEnabled() bool {
-	v := strings.ToLower(os.Getenv(debugEnvVar))
-	return v == "1" || v == "true"
-}
-
-// opencontrolplane-gen:fi

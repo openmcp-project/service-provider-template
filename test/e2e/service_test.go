@@ -3,6 +3,9 @@ package e2e
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,9 +17,13 @@ import (
 
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	// opencontrolplane-gen:fi
+
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/openmcp-testing/pkg/clusterutils"
@@ -25,9 +32,14 @@ import (
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	apiv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
+	"github.com/openmcp-project/service-provider-template/test/dns"
+
 	// opencontrolplane-gen:if SAMPLECODE=true
 	openmcpconditions "github.com/openmcp-project/openmcp-testing/pkg/conditions"
 	// opencontrolplane-gen:fi
+
+	kindcluster "sigs.k8s.io/kind/pkg/cluster"
 )
 
 func TestServiceProvider(t *testing.T) {
@@ -39,6 +51,28 @@ func TestServiceProvider(t *testing.T) {
 			config.SetName("configname")
 			if err := c.Client().Resources().Create(ctx, config); err != nil {
 				t.Errorf("failed to create ProviderConfig object: %v", err)
+			}
+			return ctx
+		}).
+		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			gatewayv1.Install(c.Client().Resources().GetScheme())
+			gatewayv1alpha2.Install(c.Client().Resources().GetScheme())
+			// inject webhook hostname to gateway ip mapping into onboarding api server
+			containerName, err := onboardingClusterContainer()
+			if err != nil {
+				t.Errorf("failed to determine onboarding container name: %v", err)
+				return ctx
+			}
+			gwIP := dns.GetGatewayIP(ctx, t, c, "default", "openmcp-system")
+			// opencontrolplane-gen:replace foo=KIND_LOWER
+			wbHostname := dns.GetHostname(ctx, t, c, "foo-webhook", "openmcp-system")
+			klog.Infof("add host %s with ip %s to /etc/hosts of the (%s) kube-apiserver", wbHostname, gwIP, containerName)
+			if err := dns.AddHostToKubeAPIServer(containerName, wbHostname, gwIP); err != nil {
+				t.Errorf("failed to add host to kube-apiserver: %v", err)
+				return ctx
+			}
+			if err := dns.WaitForKubeAPIServerRestart(containerName, 3*time.Minute); err != nil {
+				t.Errorf("kube-apiserver didn't restart properly: %v", err)
 			}
 			return ctx
 		}).
@@ -161,4 +195,22 @@ func TestServiceProvider(t *testing.T) {
 		// opencontrolplane-gen:fi
 		Teardown(providers.DeleteMCP("test-controlplane", wait.WithTimeout(5*time.Minute)))
 	testenv.Test(t, basicProviderTest.Feature())
+}
+
+func onboardingClusterContainer() (string, error) {
+	kind := kindcluster.NewProvider()
+	clusters, err := kind.List()
+	if err != nil {
+		return "", err
+	}
+	for _, clusterName := range clusters {
+		if strings.HasPrefix(clusterName, "onboarding") {
+			nodes, err := kind.ListNodes(clusterName)
+			if err != nil {
+				return "", fmt.Errorf("failed to retrieve onboarding cluster nodes: %w", err)
+			}
+			return nodes[0].String(), nil
+		}
+	}
+	return "", errors.New("onboarding cluster not found")
 }

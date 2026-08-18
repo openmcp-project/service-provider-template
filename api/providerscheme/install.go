@@ -10,7 +10,10 @@ import (
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	providerv1alpha1 "github.com/openmcp-project/openmcp-operator/api/provider/v1alpha1"
 
-	// opencontrolplane-gen:replace github.com/openmcp-project/platform-service-template=MODULE
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/api/v1alpha1"
 )
 
@@ -20,6 +23,8 @@ func PlatformScheme(scheme *runtime.Scheme) *runtime.Scheme {
 	utilruntime.Must(clustersv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(providerv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(apiextv1.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1.Install(scheme))
+	utilruntime.Must(gatewayv1alpha2.Install(scheme))
 	return scheme
 }
 
@@ -41,4 +46,5 @@ func WorkloadScheme(scheme *runtime.Scheme) *runtime.Scheme {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	return scheme
 }
-//opencontrolplane-gen:fi
+
+// opencontrolplane-gen:fi WORKLOADCLUSTER=true

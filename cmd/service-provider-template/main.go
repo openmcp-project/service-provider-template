@@ -1,9 +1,11 @@
+//go:generate opencontrolplane-gen
 package main
 
 import (
 	"fmt"
 	"os"
 
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/cmd/service-provider-template/app"
 )
 
