@@ -1,3 +1,4 @@
+//go:generate opencontrolplane-gen
 package app
 
 import (
@@ -16,6 +17,8 @@ import (
 	openmcpconst "github.com/openmcp-project/openmcp-operator/api/constants"
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess"
 	"github.com/openmcp-project/service-provider-template/api/crds"
+
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/api/providerscheme"
 )
 
