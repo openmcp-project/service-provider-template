@@ -431,7 +431,6 @@ func (o *RunOptions) Run(ctx context.Context) error {
 	return nil
 }
 
-// opencontrolplane-gen:if WATCH=onboarding
 func requestOnboardingClusterAccess(ctx context.Context, mgr clusteraccess.Manager, platformCluster *clusters.Cluster, onboardingScheme *runtime.Scheme, permissions []clustersv1alpha1.PermissionsRequest, providerName string) (*clusters.Cluster, error) {
 	cluster, err := mgr.CreateAndWaitForCluster(ctx, "onboarding-run", clustersv1alpha1.PURPOSE_ONBOARDING, onboardingScheme, permissions)
 	if err != nil {
@@ -460,5 +459,3 @@ func debugEnabled() bool {
 	v := strings.ToLower(os.Getenv(debugEnvVar))
 	return v == "1" || v == "true"
 }
-
-// opencontrolplane-gen:fi
