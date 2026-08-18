@@ -8,7 +8,7 @@ require (
 	github.com/openmcp-project/openmcp-operator/api v1.4.0
 	github.com/openmcp-project/openmcp-operator/lib v1.4.0
 	github.com/openmcp-project/openmcp-testing v1.3.1
-	github.com/spf13/pflag v1.0.10
+	github.com/spf13/cobra v1.10.2
 	k8s.io/api v0.37.0
 	k8s.io/apiextensions-apiserver v0.37.0
 	k8s.io/apimachinery v0.37.0
@@ -16,6 +16,7 @@ require (
 	k8s.io/klog/v2 v2.140.0
 	sigs.k8s.io/controller-runtime v0.25.0
 	sigs.k8s.io/e2e-framework v0.7.0
+	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
@@ -69,7 +70,7 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.0 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
-	github.com/spf13/cobra v1.10.2 // indirect
+	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/vladimirvivien/gexe v0.5.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
@@ -110,5 +111,4 @@ require (
 	sigs.k8s.io/kind v0.32.0 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
-	sigs.k8s.io/yaml v1.6.0 // indirect
 )
