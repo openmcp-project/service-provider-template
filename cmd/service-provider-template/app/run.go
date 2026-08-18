@@ -23,8 +23,6 @@ import (
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess"
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess/advanced"
 	"github.com/openmcp-project/openmcp-operator/lib/utils"
-	"github.com/openmcp-project/service-provider-template/api/providerscheme"
-	"github.com/openmcp-project/service-provider-template/api/v1alpha1"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,6 +34,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
+	"github.com/openmcp-project/service-provider-template/api/providerscheme"
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
+	"github.com/openmcp-project/service-provider-template/api/v1alpha1"
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/internal/controller"
 )
