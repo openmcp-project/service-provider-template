@@ -378,11 +378,11 @@ func (o *RunOptions) Run(ctx context.Context) error {
 		// opencontrolplane-gen:fi
 		WithRetryInterval(10 * time.Second)
 
-	// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
+	// opencontrolplane-gen:replace Foo=KIND
 	spr := serviceprovider.NewAPIReconcilerBuilder[*v1alpha1.Foo, *v1alpha1.ProviderConfig]().
-		// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
+		// opencontrolplane-gen:replace Foo=KIND
 		EmptyObjectProvider(func() *v1alpha1.Foo { return &v1alpha1.Foo{} }).
-		// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
+		// opencontrolplane-gen:replace Foo=KIND
 		EmptyConfigProvider(func() *v1alpha1.ProviderConfig { return &v1alpha1.ProviderConfig{} }).
 		PlatformCluster(o.PlatformCluster).
 		OnboardingCluster(onboardingCluster).

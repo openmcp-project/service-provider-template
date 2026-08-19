@@ -11,14 +11,24 @@ import (
 
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/openmcp-project/controller-utils/pkg/clusters"
+	ctrlutils "github.com/openmcp-project/controller-utils/pkg/controller"
 	crdutil "github.com/openmcp-project/controller-utils/pkg/crds"
+	"github.com/openmcp-project/controller-utils/pkg/init/webhooks"
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	openmcpconst "github.com/openmcp-project/openmcp-operator/api/constants"
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess"
+	libutils "github.com/openmcp-project/openmcp-operator/lib/utils"
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/api/crds"
+	"github.com/openmcp-project/service-provider-template/api/v1alpha1"
+
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
+	"github.com/openmcp-project/service-provider-template/internal/dns"
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/api/providerscheme"
 )
@@ -113,7 +123,163 @@ func (o *InitOptions) Run(ctx context.Context) error {
 		return fmt.Errorf("error creating/updating CRDs: %w", err)
 	}
 
+	if err := o.initWebhooks(ctx, onboardingCluster, providerSystemNamespace); err != nil {
+		return fmt.Errorf("error initializing webhooks: %w", err)
+	}
+
 	log.Info("Finished init command")
 
+	return nil
+}
+
+func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clusters.Cluster, providerSystemNamespace string) error {
+	log := o.Log.WithName("main")
+	log.Info("init webhooks")
+
+	log.Info("Fetching ProjectWorkspaceConfig")
+
+	suffix := "-webhook"
+	whServiceName := ctrlutils.ShortenToXCharactersUnsafe(o.ProviderName, ctrlutils.K8sMaxNameLength-len(suffix)) + suffix
+	whSecretName, err := libutils.WebhookSecretName(o.ProviderName)
+	if err != nil {
+		return fmt.Errorf("unable to determine webhook secret name: %w", err)
+	}
+
+	var gatewayResult dns.GatewayReconcileResult
+	if os.Getenv("SKIP_GATEWAY") != "true" {
+		// setup gateway for webhooks
+		dnsInstance := &dns.Instance{
+			Name:            whServiceName,
+			Namespace:       providerSystemNamespace,
+			SubDomainPrefix: "pwo-webhooks",
+			BackendName:     whServiceName,
+			BackendPort:     int32(WebhookPortSvc),
+		}
+		dnsReconciler := dns.NewReconciler()
+		timeout := 3 * time.Minute
+		log.Info("Verifying default Gateway is available", "timeout", timeout.String())
+		waitCtx, cancelCtx := context.WithTimeout(ctx, timeout)
+		defer cancelCtx()
+		err = wait.PollUntilContextTimeout(waitCtx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+			gatewayResult, err = dnsReconciler.ReconcileGateway(ctx, dnsInstance, o.PlatformCluster)
+			if err != nil {
+				log.Error(err, "Error reconciling Gateway, retrying...")
+				return false, nil
+			}
+			if gatewayResult.RequeueAfter > 0 {
+				log.Debug("Default Gateway is not yet available, retrying...")
+				return false, nil
+			}
+			return true, nil
+		})
+		if err != nil {
+			return fmt.Errorf("default Gateway did not become available within %s: %w", timeout.String(), err)
+		}
+		log.Info("Default Gateway is available", "hostName", gatewayResult.HostName)
+
+		log.Info("Waiting for TLS route to become ready", "timeout", timeout.String())
+		waitCtx, cancelCtx = context.WithTimeout(ctx, timeout)
+		defer cancelCtx()
+		err = wait.PollUntilContextTimeout(waitCtx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+			if err := dnsReconciler.ReconcileTLSRoute(ctx, dnsInstance, o.PlatformCluster); err != nil {
+				log.Error(err, "Error reconciling TLS route, retrying...")
+				return false, nil
+			}
+			tlsReady, err := dnsReconciler.IsTLSRouteReady(ctx, dnsInstance, o.PlatformCluster)
+			if err != nil {
+				log.Error(err, "Error checking TLS route readiness, retrying...")
+				return false, nil
+			}
+			if !tlsReady {
+				log.Debug("TLS route is not yet ready, retrying...")
+				return false, nil
+			}
+			return true, nil
+		})
+		if err != nil {
+			return fmt.Errorf("TLS route did not become ready within %s: %w", timeout.String(), err)
+		}
+		log.Info("TLS route is ready")
+	} else {
+		log.Info("Skipping Gateway setup as per SKIP_GATEWAY environment variable")
+	}
+
+	installOpts := []webhooks.InstallOption{
+		webhooks.WithWebhookService{Name: whServiceName, Namespace: providerSystemNamespace},
+		webhooks.WithWebhookSecret{Name: whSecretName, Namespace: providerSystemNamespace},
+		webhooks.WithRemoteClient{Client: onboardingCluster.Client()},
+		webhooks.WithWebhookServicePort(WebhookPortSvc),
+		webhooks.WithManagedWebhookService{
+			TargetPort: intstr.FromInt32(WebhookPortPod),
+			SelectorLabels: map[string]string{
+				"app.kubernetes.io/component":  "controller",
+				"app.kubernetes.io/managed-by": "openmcp-operator",
+				"app.kubernetes.io/name":       "PlatformService",
+				"app.kubernetes.io/instance":   o.ProviderName,
+			},
+		},
+	}
+	certOpts := []webhooks.CertOption{
+		webhooks.WithWebhookService{Name: whServiceName, Namespace: providerSystemNamespace},
+		webhooks.WithWebhookSecret{Name: whSecretName, Namespace: providerSystemNamespace},
+	}
+	if o.PlatformCluster.RESTConfig().Host != onboardingCluster.RESTConfig().Host {
+		// create a URL-based webhook otherwise
+		installOpts = append(installOpts, webhooks.WithCustomBaseURL(fmt.Sprintf("https://%s:%d", gatewayResult.HostName, gatewayResult.TLSPort)))
+		certOpts = append(certOpts, webhooks.WithAdditionalDNSNames{gatewayResult.HostName})
+	}
+
+	// webhook options we might or might not support at a later time
+	/*
+		opts = append(opts, webhooks.WithoutCA)
+		opts = append(opts, webhooks.WithCustomCA{todo})
+	*/
+
+	webhookTypes := []webhooks.APITypes{
+		{
+			// opencontrolplane-gen:replace Foo=KIND
+			Obj:       &v1alpha1.Foo{},
+			Validator: true,
+			Defaulter: true,
+		},
+	}
+
+	if os.Getenv("SKIP_WEBHOOKS") != "true" {
+		log.Info("Webhooks are enabled, ensuring required resources ...")
+
+		// Generate webhook certificate
+		if err := webhooks.GenerateCertificate(ctx, o.PlatformCluster.Client(), certOpts...); err != nil {
+			return fmt.Errorf("unable to generate webhook certificate: %w", err)
+		}
+
+		// Compile-time checks to ensure Project implements the required interfaces
+
+		// Install webhooks
+		err := webhooks.Install(
+			ctx,
+			o.PlatformCluster.Client(),
+			onboardingCluster.Scheme(),
+			webhookTypes,
+			installOpts...,
+		)
+		if err != nil {
+			return fmt.Errorf("unable to install webhooks: %w", err)
+		}
+	} else {
+		log.Info("Webhooks are disabled, removing webhook resources if they exist ...")
+
+		// Uninstall webhooks
+		err := webhooks.Uninstall(
+			ctx,
+			o.PlatformCluster.Client(),
+			onboardingCluster.Scheme(),
+			webhookTypes,
+			installOpts...,
+		)
+		if err != nil {
+			return fmt.Errorf("unable to uninstall webhooks: %w", err)
+		}
+	}
+	log.Info("Finished init webhooks")
 	return nil
 }
