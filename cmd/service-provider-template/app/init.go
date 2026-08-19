@@ -40,7 +40,7 @@ func NewInitCommand(so *SharedOptions) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Initialize Platform Service ProjectWorkspace",
+		Short: "Initialize Service Provider ",
 		Run: func(cmd *cobra.Command, args []string) {
 			opts.PrintRawOptions(cmd)
 			if err := opts.Complete(cmd.Context()); err != nil {
@@ -137,8 +137,6 @@ func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clust
 	log := o.Log.WithName("main")
 	log.Info("init webhooks")
 
-	log.Info("Fetching ProjectWorkspaceConfig")
-
 	suffix := "-webhook"
 	whServiceName := ctrlutils.ShortenToXCharactersUnsafe(o.ProviderName, ctrlutils.K8sMaxNameLength-len(suffix)) + suffix
 	whSecretName, err := libutils.WebhookSecretName(o.ProviderName)
@@ -152,7 +150,8 @@ func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clust
 		dnsInstance := &dns.Instance{
 			Name:            whServiceName,
 			Namespace:       providerSystemNamespace,
-			SubDomainPrefix: "pwo-webhooks",
+			// opencontrolplane-gen:replace foo=PROVIDER_NAME
+			SubDomainPrefix: "foo-webhooks",
 			BackendName:     whServiceName,
 			BackendPort:     int32(WebhookPortSvc),
 		}
@@ -214,8 +213,9 @@ func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clust
 			TargetPort: intstr.FromInt32(WebhookPortPod),
 			SelectorLabels: map[string]string{
 				"app.kubernetes.io/component":  "controller",
+			// opencontrolplane-gen:replace foo=PROVIDER_NAME
 				"app.kubernetes.io/managed-by": "openmcp-operator",
-				"app.kubernetes.io/name":       "PlatformService",
+				"app.kubernetes.io/name":       "ServiceProvider",
 				"app.kubernetes.io/instance":   o.ProviderName,
 			},
 		},
