@@ -25,6 +25,7 @@ import (
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/api/crds"
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/api/v1alpha1"
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
