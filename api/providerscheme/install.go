@@ -10,7 +10,7 @@ import (
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	providerv1alpha1 "github.com/openmcp-project/openmcp-operator/api/provider/v1alpha1"
 
-	// opencontrolplane-gen:replace github.com/openmcp-project/platform-service-template=MODULE
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	"github.com/openmcp-project/service-provider-template/api/v1alpha1"
 )
 
