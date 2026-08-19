@@ -16,6 +16,8 @@ import (
 	"github.com/openmcp-project/openmcp-testing/pkg/platformservices"
 	"github.com/openmcp-project/openmcp-testing/pkg/providers"
 	"github.com/openmcp-project/openmcp-testing/pkg/setup"
+	"github.com/openmcp-project/openmcp-testing/pkg/setup/extensions"
+	"github.com/openmcp-project/openmcp-testing/pkg/setup/extensions/fluxcd"
 )
 
 var testenv env.Environment
@@ -55,6 +57,9 @@ func TestMain(m *testing.M) {
 				Image:              fmt.Sprintf("ghcr.io/openmcp-project/images/service-provider-template:%s", version),
 				LoadImageToCluster: true,
 			},
+		},
+		Extensions: []extensions.Extension{
+			&fluxcd.FluxCD{},
 		},
 	}
 	testenv = env.NewWithConfig(envconf.New().WithNamespace(openmcp.Namespace))
