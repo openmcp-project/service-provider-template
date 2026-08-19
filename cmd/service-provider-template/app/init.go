@@ -147,7 +147,7 @@ func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clust
 	}
 
 	var gatewayResult dns.GatewayReconcileResult
-	if os.Getenv("SKIP_GATEWAY") != "true" {
+	if !envFlagEnabled("SKIP_GATEWAY") {
 		// setup gateway for webhooks
 		dnsInstance := &dns.Instance{
 			Name:            whServiceName,
@@ -245,7 +245,7 @@ func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clust
 		},
 	}
 
-	if os.Getenv("SKIP_WEBHOOKS") != "true" {
+	if !envFlagEnabled("SKIP_WEBHOOKS") {
 		log.Info("Webhooks are enabled, ensuring required resources ...")
 
 		// Generate webhook certificate

@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 
+	"github.com/openmcp-project/openmcp-testing/pkg/platformservices"
 	"github.com/openmcp-project/openmcp-testing/pkg/providers"
 	"github.com/openmcp-project/openmcp-testing/pkg/setup"
 )
@@ -36,6 +37,14 @@ func TestMain(m *testing.M) {
 				Name: "kind",
 				// renovate: datasource=docker depName=ghcr.io/openmcp-project/images/cluster-provider-kind
 				Image: "ghcr.io/openmcp-project/images/cluster-provider-kind:v0.6.0",
+			},
+		},
+		PlatformServices: []platformservices.PlatformServiceSetup{
+			{
+				Name: "gateway",
+				// renovate: datasource=docker depName=ghcr.io/openmcp-project/images/platform-service-gateway
+				Image:                     "ghcr.io/openmcp-project/images/platform-service-gateway:v0.1.1",
+				PlatformServiceConfigsDir: "platform",
 			},
 		},
 		ServiceProviders: []providers.ServiceProviderSetup{

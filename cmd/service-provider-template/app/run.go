@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -355,7 +354,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 	// opencontrolplane-gen:fi
 
 	clusterAccessReconciler := advanced.NewClusterAccessReconciler(o.PlatformCluster.Client(), o.ProviderName)
-	if debugEnabled() {
+	if envFlagEnabled(debugEnvVar) {
 		// opencontrolplane-gen:if WORKLOADCLUSTER=true
 		clusterAccessReconciler = localaccess.NewLocalAdvancedClusterAccessReconciler(clusterAccessReconciler, localaccess.WithWorkloadCluster())
 		// opencontrolplane-gen:fi
@@ -437,7 +436,7 @@ func requestOnboardingClusterAccess(ctx context.Context, mgr clusteraccess.Manag
 	if err != nil {
 		return cluster, err
 	}
-	if debugEnabled() {
+	if envFlagEnabled(debugEnvVar) {
 		return patchOnboardingClient(ctx, platformCluster, cluster, providerName)
 	}
 	return cluster, nil
@@ -454,9 +453,4 @@ func patchOnboardingClient(ctx context.Context, platformCluster *clusters.Cluste
 		return onboardingCluster, err
 	}
 	return localaccess.MustPatchClusterClient(ctx, onboardingAr, onboardingCluster), nil
-}
-
-func debugEnabled() bool {
-	v := strings.ToLower(os.Getenv(debugEnvVar))
-	return v == "1" || v == "true"
 }
