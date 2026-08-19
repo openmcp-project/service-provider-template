@@ -151,7 +151,7 @@ func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clust
 			Name:            whServiceName,
 			Namespace:       providerSystemNamespace,
 			// opencontrolplane-gen:replace foo=PROVIDER_NAME
-			SubDomainPrefix: "foo-webhooks",
+			SubDomainPrefix: "service-provider-foo-webhooks",
 			BackendName:     whServiceName,
 			BackendPort:     int32(WebhookPortSvc),
 		}
