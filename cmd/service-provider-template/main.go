@@ -319,7 +319,8 @@ func main() {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "{{.GroupSuffix}}.{{.KindLower}}",
+		// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
+		LeaderElectionID: "github.com/openmcp-project/service-provider-template",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -450,7 +451,8 @@ func main() {
 		AdvancedClusterAccessReconciler(clusterAccessReconciler).
 		MustBuild()
 	if err := spr.SetupWithManager(mgr, providerName); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "{{.Kind}}")
+		// opencontrolplane-gen:replace foo=PROVIDER_NAME
+		setupLog.Error(err, "unable to create controller", "controller", "foo")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
