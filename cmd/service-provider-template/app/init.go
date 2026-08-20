@@ -107,6 +107,16 @@ func (o *InitOptions) Run(ctx context.Context) error {
 						Resources: []string{"customresourcedefinitions"},
 						Verbs:     []string{"*"},
 					},
+					{
+						APIGroups: []string{"admissionregistration.k8s.io"},
+						Resources: []string{"mutatingwebhookconfigurations", "validatingwebhookconfigurations"},
+						Verbs:     []string{"*"},
+					},
+					{
+						APIGroups: []string{""},
+						Resources: []string{"secrets", "services"},
+						Verbs:     []string{"*"},
+					},
 				},
 			},
 		})
@@ -148,8 +158,8 @@ func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clust
 	if !envFlagEnabled("SKIP_GATEWAY") {
 		// setup gateway for webhooks
 		dnsInstance := &dns.Instance{
-			Name:            whServiceName,
-			Namespace:       providerSystemNamespace,
+			Name:      whServiceName,
+			Namespace: providerSystemNamespace,
 			// opencontrolplane-gen:replace foo=PROVIDER_NAME
 			SubDomainPrefix: "service-provider-foo-webhooks",
 			BackendName:     whServiceName,
@@ -212,8 +222,8 @@ func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clust
 		webhooks.WithManagedWebhookService{
 			TargetPort: intstr.FromInt32(WebhookPortPod),
 			SelectorLabels: map[string]string{
-				"app.kubernetes.io/component":  "controller",
-			// opencontrolplane-gen:replace foo=PROVIDER_NAME
+				"app.kubernetes.io/component": "controller",
+				// opencontrolplane-gen:replace foo=PROVIDER_NAME
 				"app.kubernetes.io/managed-by": "openmcp-operator",
 				"app.kubernetes.io/name":       "ServiceProvider",
 				"app.kubernetes.io/instance":   o.ProviderName,
