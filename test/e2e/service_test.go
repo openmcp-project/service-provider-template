@@ -14,6 +14,7 @@ import (
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	// opencontrolplane-gen:fi
@@ -27,6 +28,8 @@ import (
 
 	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/openmcp-testing/pkg/clusterutils"
+	"github.com/openmcp-project/openmcp-testing/pkg/resources"
+
 	// opencontrolplane-gen:fi
 	"github.com/openmcp-project/openmcp-testing/pkg/providers"
 
@@ -51,6 +54,29 @@ func TestServiceProvider(t *testing.T) {
 			config.SetName("configname")
 			if err := c.Client().Resources().Create(ctx, config); err != nil {
 				t.Errorf("failed to create ProviderConfig object: %v", err)
+			}
+			return ctx
+		}).
+		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			if err := dns.CreateCluster(ctx, c, dns.ClusterRequest{
+				Name:      "dns",
+				Namespace: "openmcp-system",
+				Purpose:   "dns",
+			}); err != nil {
+				t.Errorf("failed to create dns cluster: %v", err)
+			}
+			dnsClusterConfig, err := clusterutils.ConfigByPrefix("dns", "default")
+			if err != nil {
+				t.Errorf("failed to retrieve dns cluster config: %v", err)
+				return ctx
+			}
+			if _, err := resources.CreateObjectsFromDir(ctx, dnsClusterConfig, "dns/etcd"); err != nil {
+				t.Errorf("failed to deploy etcd for dns: %v", err)
+				return ctx
+			}
+			if _, err := resources.CreateObjectsFromDir(ctx, c, "dns/coredns"); err != nil {
+				t.Errorf("failed to deploy coredns: %v", err)
+				return ctx
 			}
 			return ctx
 		}).
@@ -193,7 +219,11 @@ func TestServiceProvider(t *testing.T) {
 		// opencontrolplane-gen:if SAMPLECODE=false
 		// TODO add assess steps
 		// opencontrolplane-gen:fi
-		Teardown(providers.DeleteMCP("test-controlplane", wait.WithTimeout(5*time.Minute)))
+		Teardown(providers.DeleteMCP("test-controlplane", wait.WithTimeout(5*time.Minute))).
+		Teardown(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			providers.DeleteCluster(ctx, c, types.NamespacedName{Name: "dns", Namespace: "openmcp-system"})
+			return ctx
+		})
 	testenv.Test(t, basicProviderTest.Feature())
 }
 
