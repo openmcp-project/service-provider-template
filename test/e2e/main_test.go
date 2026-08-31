@@ -56,11 +56,6 @@ func TestMain(m *testing.M) {
 				Image:                     "ghcr.io/openmcp-project/images/platform-service-gateway:v0.1.1",
 				PlatformServiceConfigsDir: "gateway",
 			},
-			{
-				Name:                      "dns",
-				Image:                     "ghcr.io/openmcp-project/images/platform-service-dns:v0.1.0",
-				PlatformServiceConfigsDir: "dns/platform",
-			},
 		},
 		ServiceProviders: []providers.ServiceProviderSetup{
 			{

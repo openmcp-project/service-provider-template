@@ -10,14 +10,18 @@ import (
 	"testing"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
+	"github.com/openmcp-project/openmcp-testing/pkg/resources"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/yaml"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+
+	openmcpconditions "github.com/openmcp-project/openmcp-testing/pkg/conditions"
 )
 
 const (
@@ -63,7 +67,7 @@ func getStaticPod(containerName, file string) (string, error) {
 
 // addHost adds the given hostName and IP to the list of host aliases and writes the result to a temporary file
 func addHost(podManifest []byte, hostname, ip string) (string, error) {
-	pod := &v1.Pod{}
+	pod := &corev1.Pod{}
 	if err := yaml.Unmarshal(podManifest, pod); err != nil {
 		return "", fmt.Errorf("failed to unmarshal pod manifest: %w", err)
 	}
@@ -79,8 +83,8 @@ func addHost(podManifest []byte, hostname, ip string) (string, error) {
 	return tmpFile, nil
 }
 
-func addHostAlias(pod *v1.Pod, hostName, ip string) {
-	pod.Spec.HostAliases = append(pod.Spec.HostAliases, v1.HostAlias{
+func addHostAlias(pod *corev1.Pod, hostName, ip string) {
+	pod.Spec.HostAliases = append(pod.Spec.HostAliases, corev1.HostAlias{
 		IP: ip,
 		Hostnames: []string{
 			hostName,
@@ -167,3 +171,99 @@ func GetGatewayIP(ctx context.Context, t *testing.T, config *envconf.Config, nam
 	t.Fatalf("Gateway '%s/%s' does not have any IP addresses exposed", namespace, name)
 	return ""
 }
+
+// GetEtcdIP retrieves the first IP address of etcd service
+func GetEtcdIP(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
+	t.Helper()
+	service := &corev1.Service{}
+	service.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "Service",
+	})
+	service.SetName(name)
+	service.SetNamespace(namespace)
+	if err := config.Client().Resources().Get(ctx, name, namespace, service); err != nil {
+		t.Fatalf("failed to get Service '%s/%s': %v", namespace, name, err)
+	}
+	for _, ingress := range service.Status.LoadBalancer.Ingress {
+		if ingress.IP != "" {
+			return ingress.IP
+		}
+	}
+	t.Fatalf("Service '%s/%s' does not have any IP addresses exposed", namespace, name)
+	return ""
+}
+
+type PlatformServiceDNSConfig struct {
+	Version                 string
+	EtcdIP                  string
+	ExternalDNSChartVersion string
+}
+
+func CreatePlatformServiceDNS(ctx context.Context, t *testing.T, config *envconf.Config, dnsConfig PlatformServiceDNSConfig) error {
+	t.Helper()
+	klog.Info("create platform service dns...")
+	platformServiceDNS, err := resources.CreateObjectFromTemplate(ctx, config, platformServiceDNSTemplate, dnsConfig)
+	if err != nil {
+		return err
+	}
+	klog.Infof("create external-dns config for provider coredns backed by etcd (%s)", dnsConfig.EtcdIP)
+	// Import platform service configs with retry logic since discovery api might take some time to pick the new ps-dns config type
+	err = wait.For(func(ctx context.Context) (done bool, err error) {
+		if _, err = resources.CreateObjectFromTemplate(ctx, config, platformServiceDNSConfigTemplate, dnsConfig); err != nil {
+			klog.Infof("failed to import platform service dns config, will retry: %v", err)
+			// Return false to retry, but don't return error to allow retries
+			return false, nil
+		}
+		klog.Info("successfully imported platform service dns")
+		return true, nil
+	})
+	if err != nil {
+		return err
+	}
+	return wait.For(openmcpconditions.Match(platformServiceDNS, config, "Ready", corev1.ConditionTrue))
+}
+
+const platformServiceDNSTemplate = `
+apiVersion: openmcp.cloud/v1alpha1
+kind: PlatformService
+metadata:
+  name: dns
+spec:
+  image: ghcr.io/openmcp-project/images/platform-service-dns:{{.Version}}
+`
+
+const platformServiceDNSConfigTemplate = `
+apiVersion: dns.openmcp.cloud/v1alpha1
+kind: DNSServiceConfig
+metadata:
+  name: dns
+spec:
+  externalDNSSource:
+    chartName: charts/external-dns
+    git:
+      url: https://github.com/kubernetes-sigs/external-dns
+      interval: 1h
+      ref:
+        tag: {{.ExternalDNSChartVersion}}
+  externalDNSForPurposes:
+    - purposeSelector:
+        or:
+          - name: platform
+          - name: workload
+      helmValues:
+        policy: sync
+        txtOwnerId: "<environment>.<cluster.namespace>.<cluster.name>"
+        sources:
+          - service
+          - gateway-httproute
+          - gateway-tlsroute
+        domainFilers:
+          - open-control-plane.dev
+        provider:
+          name: coredns
+        env:
+          - name: ETCD_URLS
+            value: "http://{{.EtcdIP}}:2379"
+`

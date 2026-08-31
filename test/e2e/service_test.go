@@ -14,11 +14,11 @@ import (
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	// opencontrolplane-gen:fi
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
@@ -26,12 +26,9 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/openmcp-testing/pkg/clusterutils"
-	"github.com/openmcp-project/openmcp-testing/pkg/resources"
-
-	// opencontrolplane-gen:fi
 	"github.com/openmcp-project/openmcp-testing/pkg/providers"
+	"github.com/openmcp-project/openmcp-testing/pkg/resources"
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	apiv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
@@ -77,6 +74,24 @@ func TestServiceProvider(t *testing.T) {
 			if _, err := resources.CreateObjectsFromDir(ctx, c, "dns/coredns"); err != nil {
 				t.Errorf("failed to deploy coredns: %v", err)
 				return ctx
+			}
+			return ctx
+		}).
+		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			// install ps-dns since now we know the etcd IP for the external-dns config
+			dnsClusterConfig, err := clusterutils.ConfigByPrefix("dns", "default")
+			if err != nil {
+				t.Errorf("failed to retrieve dns cluster config: %v", err)
+				return ctx
+			}
+			etcdIP := dns.GetEtcdIP(ctx, t, dnsClusterConfig, "etcd-external", "default")
+			psDNSConfig := dns.PlatformServiceDNSConfig{
+				Version: "v0.1.0",
+				EtcdIP:  etcdIP,
+				ExternalDNSChartVersion: "v0.21.0",
+			}
+			if err := dns.CreatePlatformServiceDNS(ctx, t, c, psDNSConfig); err != nil {
+				t.Errorf("failed to create platform service dns config: %v", err)
 			}
 			return ctx
 		}).
