@@ -122,7 +122,7 @@ func TestServiceProvider(t *testing.T) {
 					return ctx
 				}
 				nameserverIP := dns.GetLoadBalancerIP(ctx, t, dnsClusterConfig, "coredns", "default")
-				klog.Infof("add nameserver with ip %s to /etc/resolv.conf of the (%s) kube-apiserver", nameserverIP, containerName)
+				klog.Infof("add nameserver with ip %s to dns config of (%s) kube-apiserver", nameserverIP, containerName)
 				if err := dns.AddNameserverToKubeAPIServer(containerName, nameserverIP); err != nil {
 					t.Errorf("failed to add host to kube-apiserver: %v", err)
 					return ctx
