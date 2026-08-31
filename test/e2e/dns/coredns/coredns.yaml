@@ -57,7 +57,7 @@ spec:
               fallthrough in-addr.arpa ip6.arpa
               ttl 30
           - name: etcd
-            parameters: "example.org"
+            parameters: "open-control-plane.dev"
             configBlock: |
               stubzones
               path /skydns

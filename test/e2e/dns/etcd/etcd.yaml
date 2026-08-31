@@ -20,14 +20,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: etcd-nodeport-external
+  name: etcd-external
   namespace: default
 spec:
-  type: NodePort
+  type: LoadBalancer
   ports:
     - port: 2379
-      targetPort: 2379
-      nodePort: 32379 # must match kind config port mapping
   selector:
     app: etcd
 ---

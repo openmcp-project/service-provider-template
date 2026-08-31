@@ -11,12 +11,10 @@ spec:
       ref:
         tag: v0.21.0
   externalDNSForPurposes:
-    - name: test
-      purposeSelector:
-        and:
-          - or:
-              - name: platform
-              - name: workload
+    - purposeSelector:
+        or:
+          - name: platform
+          - name: workload
       helmValues:
         policy: sync
         txtOwnerId: "<environment>.<cluster.namespace>.<cluster.name>"
@@ -25,7 +23,7 @@ spec:
           - gateway-httproute
           - gateway-tlsroute
         domainFilers:
-          - open-control-plane.local
+          - open-control-plane.dev
         provider:
           name: coredns
         env:
