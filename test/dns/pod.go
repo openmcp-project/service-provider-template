@@ -48,6 +48,49 @@ func AddHostToKubeAPIServer(kindContainer, hostname, ip string) error {
 	return nil
 }
 
+// AddHostToKubeAPIServer adds the nameserver ip to dns config of the kube-apiserver static pod
+// running inside the given kind container, then writes the updated manifest back so kubelet restarts the pod.
+func AddNameserverToKubeAPIServer(kindContainer, ip string) error {
+	raw, err := getStaticPod(kindContainer, "")
+	if err != nil {
+		return err
+	}
+	tmpFile, err := addNameserver([]byte(raw), ip)
+	if err != nil {
+		return err
+	}
+	var stderr bytes.Buffer
+	cmd := exec.Command("docker", "cp", tmpFile, kindContainer+":"+defaultStaticPodFile)
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to copy updated manifest to %s: %w: %s", kindContainer, err, stderr.String())
+	}
+	return nil
+}
+
+// addNameserver adds the given IP to the list of nameserver of the pod dns config and writes the result to a temporary file
+func addNameserver(podManifest []byte, ip string) (string, error) {
+	pod := &corev1.Pod{}
+	if err := yaml.Unmarshal(podManifest, pod); err != nil {
+		return "", fmt.Errorf("failed to unmarshal pod manifest: %w", err)
+	}
+	pod.Spec.DNSPolicy = corev1.DNSNone
+	pod.Spec.DNSConfig = &corev1.PodDNSConfig{
+		Nameservers: []string{
+			ip,
+		},
+	}
+	data, err := yaml.Marshal(pod)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal pod to yaml: %w", err)
+	}
+	tmpFile := filepath.Join(os.TempDir(), "kube-apiserver.yaml")
+	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write temp file: %w", err)
+	}
+	return tmpFile, nil
+}
+
 // retrieve kube-apiserver.yaml from kind node fs
 // file defaults to /etc/kubernetes/manifests/kube-apiserver.yaml
 // returns the cat file output to pass to addHost
@@ -172,8 +215,8 @@ func GetGatewayIP(ctx context.Context, t *testing.T, config *envconf.Config, nam
 	return ""
 }
 
-// GetEtcdIP retrieves the first IP address of etcd service
-func GetEtcdIP(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
+// GetLoadBalancerIP retrieves the first IP address of the service with key name/namespace
+func GetLoadBalancerIP(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
 	t.Helper()
 	service := &corev1.Service{}
 	service.SetGroupVersionKind(schema.GroupVersionKind{

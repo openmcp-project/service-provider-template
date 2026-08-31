@@ -95,7 +95,7 @@ func Test_addHost(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			name:        "",
+			name:        "the positive test",
 			podManifest: []byte(staticKubeAPIServerPodManifest),
 			hostname:    "test.example.com",
 			ip:          "192.168.0.1",
@@ -109,6 +109,46 @@ func Test_addHost(t *testing.T) {
 				fmt.Printf("%4d: %s\n", i+1, line)
 			}
 			got, gotErr := addHost(tt.podManifest, tt.hostname, tt.ip)
+			if gotErr != nil {
+				if !tt.wantErr {
+					t.Errorf("addHost() failed: %v", gotErr)
+				}
+				return
+			}
+			if tt.wantErr {
+				t.Fatal("addHost() succeeded unexpectedly")
+			}
+			// TODO: update the condition below to compare got with tt.want.
+			if true {
+				t.Errorf("addHost() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_addNameserver(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		// Named input parameters for target function.
+		podManifest []byte
+		ip          string
+		want        string
+		wantErr     bool
+	}{
+		{
+			name:        "the positive test",
+			podManifest: []byte(staticKubeAPIServerPodManifest),
+			ip:          "192.168.0.1",
+			wantErr:     false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lines := bytes.Split(tt.podManifest, []byte("\n"))
+			for i, line := range lines {
+				fmt.Printf("%4d: %s\n", i+1, line)
+			}
+			got, gotErr := addNameserver(tt.podManifest, tt.ip)
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("addHost() failed: %v", gotErr)

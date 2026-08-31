@@ -84,10 +84,10 @@ func TestServiceProvider(t *testing.T) {
 				t.Errorf("failed to retrieve dns cluster config: %v", err)
 				return ctx
 			}
-			etcdIP := dns.GetEtcdIP(ctx, t, dnsClusterConfig, "etcd-external", "default")
+			etcdIP := dns.GetLoadBalancerIP(ctx, t, dnsClusterConfig, "etcd-external", "default")
 			psDNSConfig := dns.PlatformServiceDNSConfig{
-				Version: "v0.1.0",
-				EtcdIP:  etcdIP,
+				Version:                 "v0.1.0",
+				EtcdIP:                  etcdIP,
 				ExternalDNSChartVersion: "v0.21.0",
 			}
 			if err := dns.CreatePlatformServiceDNS(ctx, t, c, psDNSConfig); err != nil {
@@ -104,13 +104,29 @@ func TestServiceProvider(t *testing.T) {
 				t.Errorf("failed to determine onboarding container name: %v", err)
 				return ctx
 			}
-			gwIP := dns.GetGatewayIP(ctx, t, c, "default", "openmcp-system")
-			// opencontrolplane-gen:replace foo=KIND_LOWER
-			wbHostname := dns.GetHostname(ctx, t, c, "foo-webhook", "openmcp-system")
-			klog.Infof("add host %s with ip %s to /etc/hosts of the (%s) kube-apiserver", wbHostname, gwIP, containerName)
-			if err := dns.AddHostToKubeAPIServer(containerName, wbHostname, gwIP); err != nil {
-				t.Errorf("failed to add host to kube-apiserver: %v", err)
-				return ctx
+			if false {
+				// inject host into kube-apiserver
+				gwIP := dns.GetGatewayIP(ctx, t, c, "default", "openmcp-system")
+				// opencontrolplane-gen:replace foo=KIND_LOWER
+				wbHostname := dns.GetHostname(ctx, t, c, "foo-webhook", "openmcp-system")
+				klog.Infof("add host %s with ip %s to /etc/hosts of the (%s) kube-apiserver", wbHostname, gwIP, containerName)
+				if err := dns.AddHostToKubeAPIServer(containerName, wbHostname, gwIP); err != nil {
+					t.Errorf("failed to add host to kube-apiserver: %v", err)
+					return ctx
+				}
+			} else {
+				// inject additional nameserver into kube-apiserver
+				dnsClusterConfig, err := clusterutils.ConfigByPrefix("dns", "default")
+				if err != nil {
+					t.Errorf("failed to retrieve dns cluster config: %v", err)
+					return ctx
+				}
+				nameserverIP := dns.GetLoadBalancerIP(ctx, t, dnsClusterConfig, "coredns", "default")
+				klog.Infof("add nameserver with ip %s to /etc/resolv.conf of the (%s) kube-apiserver", nameserverIP, containerName)
+				if err := dns.AddNameserverToKubeAPIServer(containerName, nameserverIP); err != nil {
+					t.Errorf("failed to add host to kube-apiserver: %v", err)
+					return ctx
+				}
 			}
 			if err := dns.WaitForKubeAPIServerRestart(containerName, 3*time.Minute); err != nil {
 				t.Errorf("kube-apiserver didn't restart properly: %v", err)
