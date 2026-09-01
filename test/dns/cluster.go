@@ -51,7 +51,7 @@ type accessRequest struct {
 	RequestName string
 }
 
-func CreateCluster(ctx context.Context, config *envconf.Config, cr ClusterRequest) error {
+func createCluster(ctx context.Context, config *envconf.Config, cr ClusterRequest) error {
 	crObj, err := resources.CreateObjectFromTemplate(ctx, config, clusterRequestTemplate, cr)
 	if err != nil {
 		return fmt.Errorf("failed to create cluster request: %v", err)

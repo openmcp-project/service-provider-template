@@ -28,9 +28,9 @@ const (
 	defaultStaticPodFile = "/etc/kubernetes/manifests/kube-apiserver.yaml"
 )
 
-// AddHostToKubeAPIServer adds the given hostname -> ip to the host aliases of the kube-apiserver static pod
+// addHostToKubeAPIServer adds the given hostname -> ip to the host aliases of the kube-apiserver static pod
 // running inside the given kind container, then writes the updated manifest back so kubelet restarts the pod.
-func AddHostToKubeAPIServer(kindContainer, hostname, ip string) error {
+func addHostToKubeAPIServer(kindContainer, hostname, ip string) error {
 	raw, err := getStaticPod(kindContainer, "")
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func AddHostToKubeAPIServer(kindContainer, hostname, ip string) error {
 
 // AddHostToKubeAPIServer adds the nameserver ip to dns config of the kube-apiserver static pod
 // running inside the given kind container, then writes the updated manifest back so kubelet restarts the pod.
-func AddNameserverToKubeAPIServer(kindContainer, ip string) error {
+func addNameserverToKubeAPIServer(kindContainer, ip string) error {
 	raw, err := getStaticPod(kindContainer, "")
 	if err != nil {
 		return err
@@ -135,10 +135,10 @@ func addHostAlias(pod *corev1.Pod, hostName, ip string) {
 	})
 }
 
-// WaitForKubeAPIServerRestart polls the kube-apiserver /livez endpoint inside the kind
+// waitForKubeAPIServerRestart polls the kube-apiserver /livez endpoint inside the kind
 // container via docker exec. It first waits for the server to go down (confirming kubelet
 // has torn down the old pod), then waits for it to come back healthy.
-func WaitForKubeAPIServerRestart(kindContainer string, timeout time.Duration) error {
+func waitForKubeAPIServerRestart(kindContainer string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	klog.Infof("wait for (%s) kube-apiserver restart...", kindContainer)
 
@@ -171,8 +171,8 @@ func curlAPIServer(kindContainer string) *exec.Cmd {
 	return exec.Command("docker", "exec", kindContainer, "curl", "--silent", "--fail", "--insecure", "https://localhost:6443/livez")
 }
 
-// GetHostname retrieves the first hostname defined in the TLSRoute with the given name and namespace.
-func GetHostname(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
+// getHostname retrieves the first hostname defined in the TLSRoute with the given name and namespace.
+func getHostname(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
 	t.Helper()
 	tlsRoute := &gatewayv1alpha2.TLSRoute{}
 	tlsRoute.SetGroupVersionKind(schema.GroupVersionKind{
@@ -191,8 +191,8 @@ func GetHostname(ctx context.Context, t *testing.T, config *envconf.Config, name
 	return string(tlsRoute.Spec.Hostnames[0])
 }
 
-// GetGatewayIP retrieves the first IP address of the Gateway with the given name and namespace.
-func GetGatewayIP(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
+// getGatewayIP retrieves the first IP address of the Gateway with the given name and namespace.
+func getGatewayIP(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
 	t.Helper()
 
 	gateway := &gatewayv1.Gateway{}
@@ -215,8 +215,8 @@ func GetGatewayIP(ctx context.Context, t *testing.T, config *envconf.Config, nam
 	return ""
 }
 
-// GetLoadBalancerIP retrieves the first IP address of the service with key name/namespace
-func GetLoadBalancerIP(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
+// getLoadBalancerIP retrieves the first IP address of the service with key name/namespace
+func getLoadBalancerIP(ctx context.Context, t *testing.T, config *envconf.Config, name, namespace string) string {
 	t.Helper()
 	service := &corev1.Service{}
 	service.SetGroupVersionKind(schema.GroupVersionKind{
@@ -244,7 +244,7 @@ type PlatformServiceDNSConfig struct {
 	ExternalDNSChartVersion string
 }
 
-func CreatePlatformServiceDNS(ctx context.Context, t *testing.T, config *envconf.Config, dnsConfig PlatformServiceDNSConfig) error {
+func createPlatformServiceDNS(ctx context.Context, t *testing.T, config *envconf.Config, dnsConfig PlatformServiceDNSConfig) error {
 	t.Helper()
 	klog.Info("create platform service dns...")
 	platformServiceDNS, err := resources.CreateObjectFromTemplate(ctx, config, platformServiceDNSTemplate, dnsConfig)

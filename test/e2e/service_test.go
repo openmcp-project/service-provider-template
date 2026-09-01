@@ -19,16 +19,12 @@ import (
 	// opencontrolplane-gen:fi
 
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/openmcp-project/openmcp-testing/pkg/clusterutils"
 	"github.com/openmcp-project/openmcp-testing/pkg/providers"
-	"github.com/openmcp-project/openmcp-testing/pkg/resources"
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	apiv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
@@ -54,85 +50,15 @@ func TestServiceProvider(t *testing.T) {
 			}
 			return ctx
 		}).
-		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-			if err := dns.CreateCluster(ctx, c, dns.ClusterRequest{
-				Name:      "dns",
-				Namespace: "openmcp-system",
-				Purpose:   "dns",
-			}); err != nil {
-				t.Errorf("failed to create dns cluster: %v", err)
-			}
-			dnsClusterConfig, err := clusterutils.ConfigByPrefix("dns", "default")
-			if err != nil {
-				t.Errorf("failed to retrieve dns cluster config: %v", err)
-				return ctx
-			}
-			if _, err := resources.CreateObjectsFromDir(ctx, dnsClusterConfig, "dns/etcd"); err != nil {
-				t.Errorf("failed to deploy etcd for dns: %v", err)
-				return ctx
-			}
-			if _, err := resources.CreateObjectsFromDir(ctx, c, "dns/coredns"); err != nil {
-				t.Errorf("failed to deploy coredns: %v", err)
-				return ctx
-			}
-			return ctx
-		}).
-		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-			// install ps-dns since now we know the etcd IP for the external-dns config
-			dnsClusterConfig, err := clusterutils.ConfigByPrefix("dns", "default")
-			if err != nil {
-				t.Errorf("failed to retrieve dns cluster config: %v", err)
-				return ctx
-			}
-			etcdIP := dns.GetLoadBalancerIP(ctx, t, dnsClusterConfig, "etcd-external", "default")
-			psDNSConfig := dns.PlatformServiceDNSConfig{
-				Version:                 "v0.1.0",
-				EtcdIP:                  etcdIP,
-				ExternalDNSChartVersion: "v0.21.0",
-			}
-			if err := dns.CreatePlatformServiceDNS(ctx, t, c, psDNSConfig); err != nil {
-				t.Errorf("failed to create platform service dns config: %v", err)
-			}
-			return ctx
-		}).
-		Setup(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
-			gatewayv1.Install(c.Client().Resources().GetScheme())
-			gatewayv1alpha2.Install(c.Client().Resources().GetScheme())
-			// inject webhook hostname to gateway ip mapping into onboarding api server
-			containerName, err := onboardingClusterContainer()
-			if err != nil {
-				t.Errorf("failed to determine onboarding container name: %v", err)
-				return ctx
-			}
-			if false {
-				// inject host into kube-apiserver
-				gwIP := dns.GetGatewayIP(ctx, t, c, "default", "openmcp-system")
+		Setup(dns.SetupDNS(dns.DNSConfig{
+			ClusterPurpose: "dns",
+			DedicatedDNS:   true,
+			TLSRouteKey: types.NamespacedName{
 				// opencontrolplane-gen:replace foo=KIND_LOWER
-				wbHostname := dns.GetHostname(ctx, t, c, "foo-webhook", "openmcp-system")
-				klog.Infof("add host %s with ip %s to /etc/hosts of the (%s) kube-apiserver", wbHostname, gwIP, containerName)
-				if err := dns.AddHostToKubeAPIServer(containerName, wbHostname, gwIP); err != nil {
-					t.Errorf("failed to add host to kube-apiserver: %v", err)
-					return ctx
-				}
-			} else {
-				// inject additional nameserver into kube-apiserver
-				dnsClusterConfig, err := clusterutils.ConfigByPrefix("dns", "default")
-				if err != nil {
-					t.Errorf("failed to retrieve dns cluster config: %v", err)
-					return ctx
-				}
-				nameserverIP := dns.GetLoadBalancerIP(ctx, t, dnsClusterConfig, "coredns", "default")
-				klog.Infof("add nameserver with ip %s to dns config of (%s) kube-apiserver", nameserverIP, containerName)
-				if err := dns.AddNameserverToKubeAPIServer(containerName, nameserverIP); err != nil {
-					t.Errorf("failed to add host to kube-apiserver: %v", err)
-					return ctx
-				}
-			}
-			if err := dns.WaitForKubeAPIServerRestart(containerName, 3*time.Minute); err != nil {
-				t.Errorf("kube-apiserver didn't restart properly: %v", err)
-			}
-			return ctx
-		}).
+				Name:      "foo-webhook",
+				Namespace: "openmcp-system",
+			},
+		})).
 		Setup(providers.CreateMCP("test-controlplane")).
 		// opencontrolplane-gen:if SAMPLECODE=true
 		Assess("verify provider can be successfully consumed",
