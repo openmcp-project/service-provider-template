@@ -13,8 +13,12 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 
+	"github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
+	"github.com/openmcp-project/openmcp-testing/pkg/platformservices"
 	"github.com/openmcp-project/openmcp-testing/pkg/providers"
 	"github.com/openmcp-project/openmcp-testing/pkg/setup"
+	"github.com/openmcp-project/openmcp-testing/pkg/setup/extensions"
+	"github.com/openmcp-project/openmcp-testing/pkg/setup/extensions/fluxcd"
 )
 
 var testenv env.Environment
@@ -30,12 +34,27 @@ func TestMain(m *testing.M) {
 			Image:        "ghcr.io/openmcp-project/images/openmcp-operator:v1.3.0",
 			Environment:  "debug",
 			PlatformName: "platform",
+			ExtraClusterPurposeMapping: []providers.ClusterPurposeMapping{
+				{
+					Purpose: "dns",
+					Profile: "kind",
+					Tenancy: v1alpha1.TENANCY_SHARED,
+				},
+			},
 		},
 		ClusterProviders: []providers.ClusterProviderSetup{
 			{
 				Name: "kind",
 				// renovate: datasource=docker depName=ghcr.io/openmcp-project/images/cluster-provider-kind
 				Image: "ghcr.io/openmcp-project/images/cluster-provider-kind:v0.6.0",
+			},
+		},
+		PlatformServices: []platformservices.PlatformServiceSetup{
+			{
+				Name: "gateway",
+				// renovate: datasource=docker depName=ghcr.io/openmcp-project/images/platform-service-gateway
+				Image:                     "ghcr.io/openmcp-project/images/platform-service-gateway:v0.1.1",
+				PlatformServiceConfigsDir: "gateway",
 			},
 		},
 		ServiceProviders: []providers.ServiceProviderSetup{
@@ -46,6 +65,9 @@ func TestMain(m *testing.M) {
 				Image:              fmt.Sprintf("ghcr.io/openmcp-project/images/service-provider-template:%s", version),
 				LoadImageToCluster: true,
 			},
+		},
+		Extensions: []extensions.Extension{
+			&fluxcd.FluxCD{},
 		},
 	}
 	testenv = env.NewWithConfig(envconf.New().WithNamespace(openmcp.Namespace))

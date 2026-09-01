@@ -3,6 +3,9 @@ package e2e
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,20 +17,25 @@ import (
 
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	// opencontrolplane-gen:fi
+
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/openmcp-testing/pkg/clusterutils"
-	// opencontrolplane-gen:fi
 	"github.com/openmcp-project/openmcp-testing/pkg/providers"
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
 	apiv1alpha1 "github.com/openmcp-project/service-provider-template/api/v1alpha1"
+	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE
+	"github.com/openmcp-project/service-provider-template/test/dns"
+
 	// opencontrolplane-gen:if SAMPLECODE=true
 	openmcpconditions "github.com/openmcp-project/openmcp-testing/pkg/conditions"
 	// opencontrolplane-gen:fi
+
+	kindcluster "sigs.k8s.io/kind/pkg/cluster"
 )
 
 func TestServiceProvider(t *testing.T) {
@@ -42,6 +50,15 @@ func TestServiceProvider(t *testing.T) {
 			}
 			return ctx
 		}).
+		Setup(dns.SetupDNS(dns.DNSConfig{
+			ClusterPurpose: "dns",
+			DedicatedDNS:   true,
+			TLSRouteKey: types.NamespacedName{
+				// opencontrolplane-gen:replace foo=KIND_LOWER
+				Name:      "foo-webhook",
+				Namespace: "openmcp-system",
+			},
+		})).
 		Setup(providers.CreateMCP("test-controlplane")).
 		// opencontrolplane-gen:if SAMPLECODE=true
 		Assess("verify provider can be successfully consumed",
@@ -159,6 +176,28 @@ func TestServiceProvider(t *testing.T) {
 		// opencontrolplane-gen:if SAMPLECODE=false
 		// TODO add assess steps
 		// opencontrolplane-gen:fi
-		Teardown(providers.DeleteMCP("test-controlplane", wait.WithTimeout(5*time.Minute)))
+		Teardown(providers.DeleteMCP("test-controlplane", wait.WithTimeout(5*time.Minute))).
+		Teardown(func(ctx context.Context, t *testing.T, c *envconf.Config) context.Context {
+			providers.DeleteCluster(ctx, c, types.NamespacedName{Name: "dns", Namespace: "openmcp-system"})
+			return ctx
+		})
 	testenv.Test(t, basicProviderTest.Feature())
+}
+
+func onboardingClusterContainer() (string, error) {
+	kind := kindcluster.NewProvider()
+	clusters, err := kind.List()
+	if err != nil {
+		return "", err
+	}
+	for _, clusterName := range clusters {
+		if strings.HasPrefix(clusterName, "onboarding") {
+			nodes, err := kind.ListNodes(clusterName)
+			if err != nil {
+				return "", fmt.Errorf("failed to retrieve onboarding cluster nodes: %w", err)
+			}
+			return nodes[0].String(), nil
+		}
+	}
+	return "", errors.New("onboarding cluster not found")
 }
