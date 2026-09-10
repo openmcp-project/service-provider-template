@@ -9,19 +9,21 @@ tasks:
   dev:gen:
     desc: "Execute the template for local development"
     vars:
-      debug: '{{.debug | default "false"}}'
-      workloadcluster: '{{.workloadcluster | default "false"}}'
-      secretwatcher: '{{.secretwatcher | default "false"}}'
-      samplecode: '{{ .samplecode | default "false"}}'
+      debug: "{{.debug | default false}}"
+      workloadcluster: "{{.workloadcluster | default false}}"
+      secretwatcher: "{{.secretwatcher | default false}}"
+      samplecode: "{{ .samplecode | default false}}"
+      webhook: "{{ .webhook | default false}}"
     env:
       DEBUG: "{{ .debug }}"
       KIND: "Example"
       KIND_LOWER: "example"
-      PROVIDER_NAME: "example"
+      PROVIDER_NAME: "template"
       MODULE: "github.com/openmcp-project/service-provider-example"
       WORKLOADCLUSTER: "{{ .workloadcluster }}"
       SECRETWATCHER: "{{ .secretwatcher }}"
       SAMPLECODE: "{{ .samplecode }}"
+      WEBHOOK: "{{ .webhook }}"
     cmds:
       - go generate ./...
       - go mod edit -module $MODULE
@@ -41,7 +43,7 @@ tasks:
           secretwatcher: "{{.secretwatcher}}"
           samplecode: "{{.samplecode}}"
       - task: build:img:build
-      - docker tag ghcr.io/openmcp-project/images/{{.COMPONENTS}}:{{.VERSION}}-linux-{{ARCH}} ghcr.io/openmcp-project/images/service-provider-example:{{.VERSION}}
+      - docker tag ghcr.io/openmcp-project/images/{{.COMPONENTS}}:{{.VERSION}}-linux-{{ARCH}} ghcr.io/openmcp-project/images/service-provider-template:{{.VERSION}}
 
   dev:e2e:
     desc: "Build image and run e2e tests"
@@ -57,13 +59,15 @@ tasks:
   generate-provider:
     desc: "Generate Service Provider with opencontrolplane-gen transformation"
     vars:
-      dryrun: '{{.dryrun | default "false"}}'
+      dryrun: "{{.dryrun | default false}}"
       api: '{{.api | default "Example"}}'
       name: '{{.name | default "example"}}'
       module: '{{.module | default "github.com/openmcp-project/service-provider-example"}}'
-      workloadcluster: '{{.workloadcluster | default "false"}}'
-      secretwatcher: '{{.secretwatcher | default "false"}}'
-      samplecode: '{{ .samplecode | default "false"}}'
+      workloadcluster: "{{.workloadcluster | default false}}"
+      secretwatcher: "{{.secretwatcher | default false}}"
+      samplecode: "{{ .samplecode | default false}}"
+      webhook: "{{ .webhook | default false}}"
+      CODE_DIRS: "{{.ROOT_DIR}}/cmd/... {{.ROOT_DIR}}/internal/... {{.ROOT_DIR}}/api/v1alpha1/... {{.ROOT_DIR}}/test/e2e/..."
     env:
       KIND: "{{ .api }}"
       KIND_LOWER: "{{ lower .api }}"
@@ -73,11 +77,20 @@ tasks:
       WORKLOADCLUSTER: "{{ .workloadcluster }}"
       SECRETWATCHER: "{{ .secretwatcher }}"
       SAMPLECODE: "{{ .samplecode }}"
+      WEBHOOK: "{{ .webhook }}"
     cmds:
       - DRY_RUN={{.dryrun}} go generate ./...
-      - cmd: mv ./cmd/service-provider-template ./cmd/${CMD_FOLDER}
+      - cmd: |
+          rm -rf ./internal/dns
+          rm -rf ./internal/webhook
+          rm -rf ./test/e2e/gateawy
+        if: '{{ and (eq .webhook "false") (eq .dryrun "false") }}'
+      - cmd: |
+          mv ./cmd/service-provider-template ./cmd/${CMD_FOLDER}
+          go mod edit -module {{.module}}
+          {{.ROOT_DIR}}/hack/common/sed.sh 's/service-provider-template/service-provider-{{.name}}/g' Taskfile.yaml
+          {{.ROOT_DIR}}/bin/goimports -l -w -local={{.module}} {{.ROOT_DIR}}/test/e2e/main_test.go
+          {{.ROOT_DIR}}/bin/goimports -l -w -local={{.module}} {{.ROOT_DIR}}/test/e2e/service_test.go
         if: '{{ eq .dryrun "false" }}'
-      - cmd: go mod edit -module {{.module}}
-        if: '{{ eq .dryrun "false" }}'
-      - cmd: "{{.ROOT_DIR}}/hack/common/sed.sh 's/service-provider-template/service-provider-{{.name}}/g' Taskfile.yaml"
+      - task: gen:format-imports
         if: '{{ eq .dryrun "false" }}'

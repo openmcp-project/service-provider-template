@@ -20,31 +20,22 @@ package controller
 import (
 	"context"
 
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"fmt"
 	"time"
 
-	// opencontrolplane-gen:fi
-	// opencontrolplane-gen:if SECRETWATCHER=true
 	corev1 "k8s.io/api/core/v1"
-	// opencontrolplane-gen:fi
-
-	ctrl "sigs.k8s.io/controller-runtime"
-	// opencontrolplane-gen:if SAMPLECODE=true
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	// opencontrolplane-gen:fi
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
-	// opencontrolplane-gen:if SAMPLECODE=true
 	"github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider"
-	// opencontrolplane-gen:fi
 	clusteraccess "github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider/clusteraccess"
 
 	// opencontrolplane-gen:replace github.com/openmcp-project/service-provider-template=MODULE

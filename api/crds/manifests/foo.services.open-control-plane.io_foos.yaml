@@ -29,6 +29,7 @@ spec:
         description: |-
           opencontrolplane-gen:replace Foo=KIND foo=KIND_LOWER
           Foo is the Schema for the foos API
+          opencontrolplane-gen:replace foo=KIND_LOWER
           opencontrolplane-gen:replace Foo=KIND
         properties:
           apiVersion:
