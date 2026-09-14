@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -86,7 +87,6 @@ func (o *InitOptions) Run(ctx context.Context) error {
 	log.Info("ProviderName", "value", o.ProviderName)
 
 	log.Info("Getting access to the onboarding cluster")
-	onboardingScheme := providerscheme.OnboardingScheme(runtime.NewScheme())
 
 	providerSystemNamespace := os.Getenv(openmcpconst.EnvVariablePodNamespace)
 	if providerSystemNamespace == "" {
@@ -98,7 +98,7 @@ func (o *InitOptions) Run(ctx context.Context) error {
 		WithInterval(10 * time.Second).
 		WithTimeout(30 * time.Minute)
 
-	onboardingCluster, err := requestOnboardingClusterAccess(ctx, clusterAccessManager, o.PlatformCluster, onboardingScheme,
+	onboardingCluster, err := requestOnboardingAccess(ctx, clusterAccessManager,
 		[]clustersv1alpha1.PermissionsRequest{
 			{
 				Rules: []rbacv1.PolicyRule{
@@ -116,7 +116,7 @@ func (o *InitOptions) Run(ctx context.Context) error {
 					// opencontrolplane-gen:fi
 				},
 			},
-		}, o.ProviderName, appInit)
+		}, o.SharedOptions, appInit)
 
 	if err != nil {
 		return fmt.Errorf("error creating/updating onboarding cluster: %w", err)
@@ -129,6 +129,17 @@ func (o *InitOptions) Run(ctx context.Context) error {
 	crdManager.AddCRDLabelToClusterMapping(clustersv1alpha1.PURPOSE_ONBOARDING, onboardingCluster)
 	if err := crdManager.CreateOrUpdateCRDs(ctx, &log); err != nil {
 		return fmt.Errorf("error creating/updating CRDs: %w", err)
+	}
+
+	// register GVK
+	spGVK := metav1.GroupVersionKind{
+		Group:   v1alpha1.GroupVersion.Group,
+		Version: v1alpha1.GroupVersion.Version,
+		// opencontrolplane-gen:replace Foo=KIND
+		Kind: "Foo",
+	}
+	if err := libutils.RegisterGVKsAtServiceProvider(ctx, o.PlatformCluster.Client(), o.ProviderName, spGVK); err != nil {
+		return fmt.Errorf("failed to register GVK at ServiceProvider: %w", err)
 	}
 
 	// opencontrolplane-gen:if WEBHOOK=true
@@ -170,9 +181,9 @@ func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clust
 		dnsReconciler := dns.NewReconciler()
 		timeout := 3 * time.Minute
 		log.Info("Verifying default Gateway is available", "timeout", timeout.String())
-		waitCtx, cancelCtx := context.WithTimeout(ctx, timeout)
-		defer cancelCtx()
-		err = wait.PollUntilContextTimeout(waitCtx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		gatewayCtx, gatewayCancel := context.WithTimeout(ctx, timeout)
+		defer gatewayCancel()
+		err = wait.PollUntilContextTimeout(gatewayCtx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
 			gatewayResult, err = dnsReconciler.ReconcileGateway(ctx, dnsInstance, o.PlatformCluster)
 			if err != nil {
 				log.Error(err, "Error reconciling Gateway, retrying...")
@@ -190,9 +201,9 @@ func (o *InitOptions) initWebhooks(ctx context.Context, onboardingCluster *clust
 		log.Info("Default Gateway is available", "hostName", gatewayResult.HostName)
 
 		log.Info("Waiting for TLS route to become ready", "timeout", timeout.String())
-		waitCtx, cancelCtx = context.WithTimeout(ctx, timeout)
-		defer cancelCtx()
-		err = wait.PollUntilContextTimeout(waitCtx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		routeCtx, routeCancel := context.WithTimeout(ctx, timeout)
+		defer routeCancel()
+		err = wait.PollUntilContextTimeout(routeCtx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
 			if err := dnsReconciler.ReconcileTLSRoute(ctx, dnsInstance, o.PlatformCluster); err != nil {
 				log.Error(err, "Error reconciling TLS route, retrying...")
 				return false, nil

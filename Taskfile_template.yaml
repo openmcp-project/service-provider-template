@@ -83,7 +83,7 @@ tasks:
       - cmd: |
           rm -rf ./internal/dns
           rm -rf ./internal/webhook
-          rm -rf ./test/e2e/gateawy
+          rm -rf ./test/e2e/gateway
         if: '{{ and (eq .webhook "false") (eq .dryrun "false") }}'
       - cmd: |
           mv ./cmd/service-provider-template ./cmd/${CMD_FOLDER}

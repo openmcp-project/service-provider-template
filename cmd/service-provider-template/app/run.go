@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -122,10 +121,6 @@ func (o *RunOptions) Complete(ctx context.Context) error {
 	if err := o.SharedOptions.Complete(); err != nil {
 		return err
 	}
-	o.ProviderNamespace = os.Getenv(openmcpconst.EnvVariablePodNamespace)
-	if o.ProviderNamespace == "" {
-		return fmt.Errorf("environment variable '%s' must be set", openmcpconst.EnvVariablePodNamespace)
-	}
 
 	setupLog = o.Log.WithName("setup")
 	ctrl.SetLogger(o.Log.Logr())
@@ -222,9 +217,8 @@ func (o *RunOptions) Run(ctx context.Context) error {
 	setupLog.Info("ProviderName", "value", o.ProviderName)
 
 	setupLog.Info("Getting access to the onboarding cluster")
-	onboardingScheme := providerscheme.OnboardingScheme(runtime.NewScheme())
 
-	providerSystemNamespace := os.Getenv(openmcpconst.EnvVariablePodNamespace)
+	providerSystemNamespace := o.ProviderNamespace
 	if providerSystemNamespace == "" {
 		return fmt.Errorf("environment variable %s is not set", openmcpconst.EnvVariablePodNamespace)
 	}
@@ -247,7 +241,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 			},
 		},
 	}
-	onboardingCluster, err := requestOnboardingClusterAccess(ctx, clusterAccessManager, o.PlatformCluster, onboardingScheme, onboardingClusterPermissions, o.ProviderName, appRun)
+	onboardingCluster, err := requestOnboardingAccess(ctx, clusterAccessManager, onboardingClusterPermissions, o.SharedOptions, appRun)
 	if err != nil {
 		return fmt.Errorf("error creating/updating onboarding cluster: %w", err)
 	}
@@ -394,8 +388,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 		MustBuild()
 	if err := spr.SetupWithManager(mgr, o.ProviderName); err != nil {
 		// opencontrolplane-gen:replace foo=PROVIDER_NAME
-		setupLog.Error(err, "unable to create controller", "controller", "foo")
-		os.Exit(1)
+		return fmt.Errorf("unable to setup the controller with the manager: %w", err)
 	}
 
 	// opencontrolplane-gen:if WEBHOOK=true

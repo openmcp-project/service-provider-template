@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"os"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -10,6 +9,8 @@ import (
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/openmcp-project/service-provider-template/api/providerscheme"
 
 	localaccess "github.com/openmcp-project/opencontrolplane-runtime/pkg/serviceprovider/clusteraccess"
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
@@ -23,25 +24,26 @@ const (
 
 type appMode string
 
-func requestOnboardingClusterAccess(ctx context.Context, mgr clusteraccess.Manager, platformCluster *clusters.Cluster, onboardingScheme *runtime.Scheme, permissions []clustersv1alpha1.PermissionsRequest, providerName string, mode appMode) (*clusters.Cluster, error) {
+func requestOnboardingAccess(ctx context.Context, mgr clusteraccess.Manager, permissions []clustersv1alpha1.PermissionsRequest, opts *SharedOptions, mode appMode) (*clusters.Cluster, error) {
+	onboardingScheme := providerscheme.OnboardingScheme(runtime.NewScheme())
 	cluster, err := mgr.CreateAndWaitForCluster(ctx, clustersv1alpha1.PURPOSE_ONBOARDING+string(mode), clustersv1alpha1.PURPOSE_ONBOARDING, onboardingScheme, permissions)
 	if err != nil {
 		return cluster, err
 	}
 	if envFlagEnabled(debugEnvVar) {
-		return patchOnboardingClient(ctx, platformCluster, cluster, providerName)
+		return patchOnboardingClient(ctx, cluster, opts, mode)
 	}
 	return cluster, nil
 }
 
-func patchOnboardingClient(ctx context.Context, platformCluster *clusters.Cluster, onboardingCluster *clusters.Cluster, providerName string) (*clusters.Cluster, error) {
+func patchOnboardingClient(ctx context.Context, onboardingCluster *clusters.Cluster, opts *SharedOptions, mode appMode) (*clusters.Cluster, error) {
 	onboardingAr := &clustersv1alpha1.AccessRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusteraccess.StableRequestNameFromLocalName(providerName, "onboarding-run"),
-			Namespace: os.Getenv("POD_NAMESPACE"),
+			Name:      clusteraccess.StableRequestNameFromLocalName(opts.ProviderName, "onboarding"+string(mode)),
+			Namespace: opts.ProviderNamespace,
 		},
 	}
-	if err := platformCluster.Client().Get(ctx, client.ObjectKeyFromObject(onboardingAr), onboardingAr); err != nil {
+	if err := opts.PlatformCluster.Client().Get(ctx, client.ObjectKeyFromObject(onboardingAr), onboardingAr); err != nil {
 		return onboardingCluster, err
 	}
 	return localaccess.MustPatchClusterClient(ctx, onboardingAr, onboardingCluster), nil
