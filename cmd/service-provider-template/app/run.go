@@ -49,9 +49,9 @@ func NewRunCommand(so *SharedOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Run the Service Provider",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.PrintRawOptions(cmd)
-			if err := opts.Complete(cmd.Context()); err != nil {
+			if err := opts.Complete(); err != nil {
 				return fmt.Errorf("error completing options: %w", err)
 			}
 			opts.PrintCompletedOptions(cmd)
@@ -116,7 +116,7 @@ func (o *RunOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&o.EnableHTTP2, "enable-http2", false, "If set, HTTP/2 will be enabled for the metrics and webhook servers")
 }
 
-func (o *RunOptions) Complete(ctx context.Context) error {
+func (o *RunOptions) Complete() error {
 	if err := o.SharedOptions.Complete(); err != nil {
 		return err
 	}
@@ -392,7 +392,7 @@ func (o *RunOptions) Run(ctx context.Context) error {
 
 	// opencontrolplane-gen:if WEBHOOK=true
 	// opencontrolplane-gen:replace foo=KIND_LOWER Foo=KIND
-	if err := foowebhook.SetupFooWebhookWithManager(ctx, mgr); err != nil {
+	if err := foowebhook.SetupFooWebhookWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to setup webhook: %w", err)
 	}
 	// opencontrolplane-gen:fi

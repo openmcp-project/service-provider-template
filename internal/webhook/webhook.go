@@ -22,7 +22,7 @@ type FooWebhook struct {
 }
 
 // opencontrolplane-gen:replace Foo=KIND
-func SetupFooWebhookWithManager(ctx context.Context, mgr ctrl.Manager) error {
+func SetupFooWebhookWithManager(mgr ctrl.Manager) error {
 	// opencontrolplane-gen:replace Foo=KIND
 	wh := &FooWebhook{
 		Client: mgr.GetClient(),
@@ -40,10 +40,10 @@ var _ admission.Defaulter[*v1alpha1.Foo] = &FooWebhook{}
 
 // Default implements admission.Defaulter so a webhook will be registered for the type
 // opencontrolplane-gen:replace Foo=KIND
-func (p *FooWebhook) Default(ctx context.Context, obj *v1alpha1.Foo) error {
+func (wh *FooWebhook) Default(ctx context.Context, obj *v1alpha1.Foo) error {
 	l := logf.FromContext(ctx).WithName(webhookName)
 	// opencontrolplane-gen:replace Foo=KIND
-	l.Info("Default Foo...")
+	l.Info("Default Foo ...", "name", obj.GetName())
 	return nil
 }
 
@@ -52,27 +52,27 @@ var _ admission.Validator[*v1alpha1.Foo] = &FooWebhook{}
 
 // ValidateCreate implements admission.Validator[] so a webhook will be registered for the type
 // opencontrolplane-gen:replace Foo=KIND
-func (v *FooWebhook) ValidateCreate(ctx context.Context, obj *v1alpha1.Foo) (admission.Warnings, error) {
+func (wh *FooWebhook) ValidateCreate(ctx context.Context, obj *v1alpha1.Foo) (admission.Warnings, error) {
 	l := logf.FromContext(ctx).WithName(webhookName)
 	// opencontrolplane-gen:replace Foo=KIND
-	l.Info("Validate Foo create...")
+	l.Info("Validate Foo create...", "name", obj.GetName())
 	return admission.Warnings{}, nil
 }
 
 // ValidateUpdate implements admission.Validator[] so a webhook will be registered for the type
 // opencontrolplane-gen:replace Foo=KIND
-func (v *FooWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj *v1alpha1.Foo) (admission.Warnings, error) {
+func (wh *FooWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj *v1alpha1.Foo) (admission.Warnings, error) {
 	l := logf.FromContext(ctx).WithName(webhookName)
 	// opencontrolplane-gen:replace Foo=KIND
-	l.Info("Validate Foo update...")
+	l.Info("Validate Foo update...", "oldGeneration", oldObj.GetGeneration(), "newGeneration", newObj.GetGeneration())
 	return admission.Warnings{}, nil
 }
 
 // ValidateDelete implements admission.Validator[] so a webhook will be registered for the type
 // opencontrolplane-gen:replace Foo=KIND
-func (v *FooWebhook) ValidateDelete(ctx context.Context, obj *v1alpha1.Foo) (admission.Warnings, error) {
+func (wh *FooWebhook) ValidateDelete(ctx context.Context, obj *v1alpha1.Foo) (admission.Warnings, error) {
 	l := logf.FromContext(ctx).WithName(webhookName)
 	// opencontrolplane-gen:replace Foo=KIND
-	l.Info("Validate Foo delete...")
+	l.Info("Validate Foo delete...", "name", obj.GetName())
 	return admission.Warnings{}, nil
 }

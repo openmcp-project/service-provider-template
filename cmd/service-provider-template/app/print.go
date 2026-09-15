@@ -30,7 +30,7 @@ func (o *SharedOptions) PrintCompleted(cmd *cobra.Command) {
 	cmd.Print(string(data))
 }
 
-func (o *InitOptions) PrintRaw(cmd *cobra.Command) {}
+func (o *InitOptions) PrintRaw(*cobra.Command) {}
 
 func (o *InitOptions) PrintRawOptions(cmd *cobra.Command) {
 	cmd.Println("########## RAW OPTIONS START ##########")
@@ -39,7 +39,7 @@ func (o *InitOptions) PrintRawOptions(cmd *cobra.Command) {
 	cmd.Println("########## RAW OPTIONS END ##########")
 }
 
-func (o *InitOptions) PrintCompleted(cmd *cobra.Command) {}
+func (o *InitOptions) PrintCompleted(*cobra.Command) {}
 
 func (o *InitOptions) PrintCompletedOptions(cmd *cobra.Command) {
 	cmd.Println("########## COMPLETED OPTIONS START ##########")
@@ -64,7 +64,7 @@ func (o *RunOptions) PrintRawOptions(cmd *cobra.Command) {
 	cmd.Println("########## RAW OPTIONS END ##########")
 }
 
-func (o *RunOptions) PrintCompleted(cmd *cobra.Command) {}
+func (o *RunOptions) PrintCompleted(*cobra.Command) {}
 
 func (o *RunOptions) PrintCompletedOptions(cmd *cobra.Command) {
 	cmd.Println("########## COMPLETED OPTIONS START ##########")

@@ -42,9 +42,9 @@ func NewInitCommand(so *SharedOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize Service Provider ",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			opts.PrintRawOptions(cmd)
-			if err := opts.Complete(cmd.Context()); err != nil {
+			if err := opts.Complete(); err != nil {
 				panic(fmt.Errorf("error completing options: %w", err))
 			}
 			opts.PrintCompletedOptions(cmd)
@@ -66,9 +66,9 @@ type InitOptions struct {
 	*SharedOptions
 }
 
-func (o *InitOptions) AddFlags(cmd *cobra.Command) {}
+func (o *InitOptions) AddFlags(*cobra.Command) {}
 
-func (o *InitOptions) Complete(ctx context.Context) error {
+func (o *InitOptions) Complete() error {
 	if err := o.SharedOptions.Complete(); err != nil {
 		return err
 	}
