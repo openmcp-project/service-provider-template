@@ -98,7 +98,6 @@ type RunOptions struct {
 	MetricsServerOptions metricsserver.Options
 	MetricsCertWatcher   *certwatcher.CertWatcher
 	WebhookCertWatcher   *certwatcher.CertWatcher
-	ProviderNamespace    string
 }
 
 func (o *RunOptions) AddFlags(cmd *cobra.Command) {
