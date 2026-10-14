@@ -3,7 +3,7 @@ module github.com/openmcp-project/service-provider-template
 go 1.27.2
 
 require (
-	github.com/openmcp-project/controller-utils v0.33.1
+	github.com/openmcp-project/controller-utils v0.33.2
 	github.com/openmcp-project/opencontrolplane-runtime v1.4.1
 	github.com/openmcp-project/openmcp-operator/api v1.4.1
 	github.com/openmcp-project/openmcp-operator/lib v1.4.1
@@ -38,7 +38,7 @@ require (
 	github.com/fluxcd/helm-controller/api v1.6.4 // indirect
 	github.com/fluxcd/kustomize-controller/api v1.9.5 // indirect
 	github.com/fluxcd/pkg/apis/acl v0.10.0 // indirect
-	github.com/fluxcd/pkg/apis/kustomize v1.20.0 // indirect
+	github.com/fluxcd/pkg/apis/kustomize v1.21.0 // indirect
 	github.com/fluxcd/pkg/apis/meta v1.30.2 // indirect
 	github.com/fluxcd/pkg/kustomize v1.35.6 // indirect
 	github.com/fluxcd/pkg/tar v1.2.0 // indirect
