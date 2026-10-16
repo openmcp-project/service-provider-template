@@ -8,7 +8,7 @@ spec:
       # renovate: datasource=docker depName=ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-proxy
       proxy: "ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-proxy:distroless-v1.36.2"
       # renovate: datasource=docker depName=ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-gateway
-      gateway: "ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-gateway:v1.5.4"
+      gateway: "ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-gateway:v1.9.2"
       # renovate: datasource=docker depName=ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-ratelimit
       rateLimit: "ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-ratelimit:99d85510"
     chart:
