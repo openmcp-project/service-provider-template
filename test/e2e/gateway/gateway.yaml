@@ -6,7 +6,7 @@ spec:
   envoyGateway:
     images:
       # renovate: datasource=docker depName=ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-proxy
-      proxy: "ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-proxy:distroless-v1.36.2"
+      proxy: "ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-proxy:distroless-v1.39.4"
       # renovate: datasource=docker depName=ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-gateway
       gateway: "ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-gateway:v1.9.2"
       # renovate: datasource=docker depName=ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/images/envoy-ratelimit
@@ -14,7 +14,7 @@ spec:
     chart:
       url: "oci://ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/charts/envoy-gateway"
       # renovate: datasource=docker depName=ghcr.io/openmcp-project/components/github.com/openmcp-project/openmcp/charts/envoy-gateway
-      tag: "1.5.4"
+      tag: "1.9.2"
 
   clusters:
     - selector:
