@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 			{
 				Name: "gateway",
 				// renovate: datasource=docker depName=ghcr.io/openmcp-project/images/platform-service-gateway
-				Image:                     "ghcr.io/openmcp-project/images/platform-service-gateway:v0.2.6",
+				Image:                     "ghcr.io/openmcp-project/images/platform-service-gateway:v0.2.8",
 				PlatformServiceConfigsDir: "gateway",
 			},
 		},
