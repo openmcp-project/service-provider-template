@@ -6,6 +6,7 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.23.0
   labels:
     openmcp.cloud/cluster: onboarding
+    services.open-control-plane.io/kind: Foo
   name: foos.foo.services.open-control-plane.io
 spec:
   group: foo.services.open-control-plane.io
@@ -30,6 +31,7 @@ spec:
           opencontrolplane-gen:replace Foo=KIND foo=KIND_LOWER
           Foo is the Schema for the foos API
           opencontrolplane-gen:replace foo=KIND_LOWER
+          opencontrolplane-gen:replace Foo=KIND
           opencontrolplane-gen:replace Foo=KIND
         properties:
           apiVersion:
