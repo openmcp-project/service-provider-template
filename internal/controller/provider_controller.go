@@ -79,6 +79,8 @@ func (r *FooReconciler) CreateOrUpdate(ctx context.Context, svcobj *apiv1alpha1.
 	// TODO
 	_, _, _ = ctx, svcobj, clusters
 	// opencontrolplane-gen:fi
+	// Return RequeueAfter while waiting for something, e.g. a HelmRelease to become ready.
+	// Otherwise the runtime reconciles the object again only after ~30m to correct drift.
 	return ctrl.Result{}, nil
 }
 

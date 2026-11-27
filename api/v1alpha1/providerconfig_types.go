@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"time"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -32,12 +30,6 @@ type ProviderConfigSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
-
-	// foo is an example field of ProviderConfig. Edit providerconfig_types.go to remove/update
-	// +optional
-	// +kubebuilder:default:="1m"
-	// +kubebuilder:validation:Format=duration
-	PollInterval *metav1.Duration `json:"pollInterval,omitempty"`
 }
 
 // ProviderConfigStatus defines the observed state of ProviderConfig.
@@ -98,10 +90,4 @@ func init() {
 		s.AddKnownTypes(GroupVersion, &ProviderConfig{}, &ProviderConfigList{})
 		return nil
 	})
-}
-
-// PollInterval returns the poll interval duration from the spec.
-func (o *ProviderConfig) PollInterval() time.Duration {
-	// TODO pollInterval has to be required
-	return o.Spec.PollInterval.Duration
 }
