@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/openmcp-project/controller-utils v0.34.0
-	github.com/openmcp-project/opencontrolplane-runtime v1.4.2
+	github.com/openmcp-project/opencontrolplane-runtime v1.4.3-0.20261122031200-5f16281a9333
 	github.com/openmcp-project/openmcp-operator/api v1.4.4
 	github.com/openmcp-project/openmcp-operator/lib v1.4.4
 	github.com/openmcp-project/openmcp-testing v1.4.2
@@ -14,7 +14,7 @@ require (
 	k8s.io/apimachinery v0.37.2
 	k8s.io/client-go v0.37.2
 	k8s.io/klog/v2 v2.140.0
-	sigs.k8s.io/controller-runtime v0.25.2
+	sigs.k8s.io/controller-runtime v0.25.3
 	sigs.k8s.io/e2e-framework v0.7.0
 	sigs.k8s.io/gateway-api v1.7.0
 	sigs.k8s.io/yaml v1.6.0
